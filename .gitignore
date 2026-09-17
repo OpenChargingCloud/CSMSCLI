@@ -259,3 +259,16 @@ paket-files/
 # Python Tools for Visual Studio (PTVS)
 __pycache__/
 *.pyc
+
+# The web login of a running CSMS: a password hash, and nobody else's
+# business. Written at the first start beside the solution.
+web-login.json
+
+# What a running CSMS is configured as: its name servers, its time server and
+# what it calls itself in OCPP. A property of this particular installation,
+# not of the source.
+configuration.json
+
+# The users, organizations and API keys of the HTTPExt API. Written beside the
+# solution at the first start and belonging to this installation alone.
+CSMS-accounts/

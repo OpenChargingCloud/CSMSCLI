@@ -2,4 +2,5 @@
 
 git submodule foreach git pull
 git pull
-dotnet build OCPPTests.sln
+#dotnet build CSMSCLI.slnx --configuration Release
+dotnet build CSMSCLI.slnx

@@ -1,5 +1,5 @@
 ﻿/*
- * Copyright (c) 2014-2025 GraphDefined GmbH <achim.friedland@graphdefined.com>
+ * Copyright (c) 2014-2026 GraphDefined GmbH <achim.friedland@graphdefined.com>
  * This file is part of CSMS <https://github.com/OpenChargingCloud/CSMS>
  *
  * Licensed under the Affero GPL license, Version 3.0 (the "License");
@@ -17,120 +17,364 @@
 
 #region Usings
 
-using System.Diagnostics;
-using System.Security.Cryptography;
-
-using Newtonsoft.Json;
-
-using Org.BouncyCastle.Crypto.Parameters;
-using Org.BouncyCastle.Security;
-using Org.BouncyCastle.Crypto.Generators;
-using Org.BouncyCastle.X509;
-using Org.BouncyCastle.Pkcs;
-using Org.BouncyCastle.Math;
-using Org.BouncyCastle.Crypto;
-using Org.BouncyCastle.OpenSsl;
-using Org.BouncyCastle.Asn1.X9;
-using Org.BouncyCastle.Asn1.X509;
-using Org.BouncyCastle.Utilities;
-using Org.BouncyCastle.Crypto.Operators;
-
-using org.GraphDefined.Vanaheimr.Illias;
 using org.GraphDefined.Vanaheimr.Hermod;
-using org.GraphDefined.Vanaheimr.Hermod.DNS;
-using org.GraphDefined.Vanaheimr.Hermod.WebSocket;
-using org.GraphDefined.Vanaheimr.Norn.NTS;
+using org.GraphDefined.Vanaheimr.Hermod.HTTP;
 
-using cloud.charging.open.protocols.WWCP.NetworkingNode;
+using cloud.charging.open.CSMS.Configuration;
+using cloud.charging.open.CSMS.Logging;
+using cloud.charging.open.CSMS.Web;
 
-using OCPPv1_6 = cloud.charging.open.protocols.OCPPv1_6;
-using OCPPv2_1 = cloud.charging.open.protocols.OCPPv2_1;
+using CSMSNode = cloud.charging.open.CSMS.CSMS;
 
 #endregion
 
-namespace org.GraphDefined.OCPP.CSMS.TestApp
+namespace cloud.charging.open.CSMS.CLI
 {
 
     /// <summary>
-    /// An OCPP CSMS Test Application.
+    /// One CSMS, with its web interface, until Ctrl+C.
     /// </summary>
     public class Program
     {
 
-        #region (class) CommandException
+        #region (private static) TryTakeValue(Arguments, ref Index, out Value)
 
-        public class CommandException(String Message) : Exception(Message)
+        private static Boolean TryTakeValue(String[]     Arguments,
+                                            ref Int32    Index,
+                                            out String?  Value)
         {
 
-            #region (static) NotWithinOCPPv1_6
+            if (Index + 1 < Arguments.Length && !Arguments[Index + 1].StartsWith("--"))
+            {
+                Value = Arguments[++Index];
+                return true;
+            }
 
-            public static CommandException NotWithinOCPPv1_6
-                => new ("This command ist not available within OCPP v1.6!");
-
-            #endregion
+            Value = null;
+            return false;
 
         }
 
         #endregion
 
-        #region Data
+        #region (private static) RepositoryRoot()
 
-        private const           String         debugLogFile      = "debug.log";
-        private const           String         ocppVersion1_6    = "v1.6";
-        private const           String         ocppVersion2_1    = "v2.1";
+        /// <summary>
+        /// The directory holding CSMSCLI.slnx, looked up from the binary and
+        /// from the current directory; the current directory when neither
+        /// leads to it.
+        /// </summary>
+        /// <remarks>
+        /// The web login, the configuration and the account database default
+        /// to a place below it, so that they do not end up in bin/ - where the
+        /// next "dotnet clean" would take this CSMS's password with it.
+        /// </remarks>
+        private static String RepositoryRoot()
+        {
+
+            foreach (var start in new[] { AppContext.BaseDirectory, Environment.CurrentDirectory })
+            {
+
+                var directory = new DirectoryInfo(start);
+
+                while (directory is not null)
+                {
+
+                    if (File.Exists(Path.Combine(directory.FullName, "CSMSCLI.slnx")))
+                        return directory.FullName;
+
+                    directory = directory.Parent;
+
+                }
+
+            }
+
+            return Environment.CurrentDirectory;
+
+        }
+
+        #endregion
+
+        #region (private static) PrintUsage()
+
+        private static void PrintUsage()
+        {
+            Console.WriteLine("Usage: CSMSCLI [--port <number>] [--any] [--frontend <dist directory>]");
+            Console.WriteLine("               [--web-login <file>] [--config <file>] [--accounts <directory>]");
+            Console.WriteLine("               [--verbose | --quiet] [--no-trace]");
+            Console.WriteLine();
+            Console.WriteLine("Web interface:");
+            Console.WriteLine($"  --port <number>   TCP port to listen on (default: {CSMSNode.DefaultHTTPPort})");
+            Console.WriteLine("  --any             listen on all addresses instead of 127.0.0.1");
+            Console.WriteLine("  --frontend <dir>  serve the web interface from a directory on disk instead of the");
+            Console.WriteLine("                    bundle embedded in the assembly - use it together with");
+            Console.WriteLine("                    'npm run watch' in libs/CSMS/CSMS/Frontend");
+            Console.WriteLine();
+            Console.WriteLine("Web login:");
+            Console.WriteLine($"  --web-login <file>  where the web login lives (default: {WebLoginFile.DefaultFileName} below the");
+            Console.WriteLine("                      repository root). Without it a password is made up at the");
+            Console.WriteLine($"                      first start for the user '{WebLoginSettings.DefaultUsername}' and shown once.");
+            Console.WriteLine();
+            Console.WriteLine("Accounts:");
+            Console.WriteLine($"  --accounts <dir>    the directory the HTTPExt API keeps its users, organizations");
+            Console.WriteLine($"                      and API keys in (default: {CSMSNode.DefaultHTTPExtAPIDataPath}/ below the repository");
+            Console.WriteLine("                      root). This is the multi-user side of the CSMS and separate");
+            Console.WriteLine("                      from the single web login above, which only opens the web");
+            Console.WriteLine("                      interface.");
+            Console.WriteLine();
+            Console.WriteLine("Configuration:");
+            Console.WriteLine($"  --config <file>   where the name servers, the time server, the OCPP identification");
+            Console.WriteLine($"                    and the charging station server of this CSMS live (default:");
+            Console.WriteLine($"                    {CSMSConfigFile.DefaultFileName} below the repository root). Without the");
+            Console.WriteLine("                    file the CSMS runs on the system defaults; the");
+            Console.WriteLine("                    Configuration pages of the web interface write it, and every");
+            Console.WriteLine("                    change there takes effect at once.");
+            Console.WriteLine();
+            Console.WriteLine("Log:");
+            Console.WriteLine("  -v, --verbose     write every entry to the console, down to the debug ones");
+            Console.WriteLine("  -q, --quiet       write only warnings and worse");
+            Console.WriteLine("      --no-trace    do not pick up what the libraries below write with DebugX");
+            Console.WriteLine();
+            Console.WriteLine("Whatever the console shows, the web interface shows the whole log under 'Logs'.");
+        }
 
         #endregion
 
 
-        /// <summary>
-        /// Start the OCPP CSMS Test Application.
-        /// </summary>
-        /// <param name="Arguments">Command line arguments</param>
-        public static async Task Main(String[] Arguments)
+        public static async Task<Int32> Main(String[] Arguments)
         {
 
-            #region Data
+            Console.OutputEncoding = System.Text.Encoding.UTF8;
 
-            var dnsClient = new DNSClient(SearchForIPv6DNSServers: false);
+            #region Arguments
+
+            IPPort?  port            = null;
+            var      anyAddress      = false;
+            String?  frontendDir     = null;
+            String?  loginFilePath   = null;
+            String?  configFilePath  = null;
+            String?  accountsPath    = null;
+            var      verbose         = false;
+            var      quiet           = false;
+            var      noTrace         = false;
+
+            for (var i = 0; i < Arguments.Length; i++)
+            {
+                switch (Arguments[i])
+                {
+
+                    case "--port":
+                        if (i + 1 < Arguments.Length && UInt16.TryParse(Arguments[i + 1], out var parsedPort))
+                        {
+                            port = IPPort.Parse(parsedPort);
+                            i++;
+                        }
+                        else
+                        {
+                            Console.Error.WriteLine("Missing or invalid port number after --port!");
+                            return 2;
+                        }
+                        break;
+
+                    case "--any":
+                        anyAddress = true;
+                        break;
+
+                    case "--frontend":
+                        if (!TryTakeValue(Arguments, ref i, out frontendDir))
+                        {
+                            Console.Error.WriteLine("Missing directory after --frontend!");
+                            return 2;
+                        }
+                        break;
+
+                    case "--web-login":
+                        if (!TryTakeValue(Arguments, ref i, out loginFilePath))
+                        {
+                            Console.Error.WriteLine("Missing file after --web-login!");
+                            return 2;
+                        }
+                        break;
+
+                    case "--accounts":
+                        if (!TryTakeValue(Arguments, ref i, out accountsPath))
+                        {
+                            Console.Error.WriteLine("Missing directory after --accounts!");
+                            return 2;
+                        }
+                        break;
+
+                    case "--config":
+                        if (!TryTakeValue(Arguments, ref i, out configFilePath))
+                        {
+                            Console.Error.WriteLine("Missing file after --config!");
+                            return 2;
+                        }
+                        break;
+
+                    case "-v":
+                    case "--verbose":
+                        verbose = true;
+                        break;
+
+                    case "-q":
+                    case "--quiet":
+                        quiet = true;
+                        break;
+
+                    case "--no-trace":
+                        noTrace = true;
+                        break;
+
+                    case "-h":
+                    case "--help":
+                        PrintUsage();
+                        return 0;
+
+                    default:
+                        Console.Error.WriteLine($"Unknown argument '{Arguments[i]}'!");
+                        PrintUsage();
+                        return 2;
+
+                }
+            }
+
+            if (verbose && quiet)
+            {
+                Console.Error.WriteLine("--verbose and --quiet ask for opposite things!");
+                return 2;
+            }
 
             #endregion
 
-            #region Debug to Console/file
+            #region Where the web interface comes from
 
-            var debugFile    = new TextWriterTraceListener(debugLogFile);
+            // A directory given on the command line wins, so that
+            // "npm run watch" beside a running CSMS shows up in the browser on
+            // a reload, without rebuilding the C# side.
+            IStaticContentSource? frontend = null;
 
-            var debugTargets = new[] {
-                debugFile,
-                new TextWriterTraceListener(Console.Out)
-            };
+            if (frontendDir is not null)
+            {
 
-            Trace.Listeners.AddRange(debugTargets);
+                if (!Directory.Exists(frontendDir))
+                {
+                    Console.Error.WriteLine($"The frontend directory '{frontendDir}' does not exist!");
+                    return 2;
+                }
 
-            #endregion
+                frontend = new FileSystemContentSource(frontendDir);
 
-
-            Directory.CreateDirectory(Path.Combine(AppContext.BaseDirectory, "HTTPSSEs"));
-
-            var csms  = new CSMS(dnsClient);
-
-            var cli   = new CSMSTestCLI(
-                            csms.TestCentralSystemV1_6,
-                            csms.TestCSMSv2_1
-                        );
-
-            await cli.Run();
-
-
-            #region Shutdown
-
-            await csms.TestCentralSystemV1_6.Shutdown();
-            await csms.TestCSMSv2_1.         Stop();
-
-            foreach (var DebugListener in Trace.Listeners)
-                (DebugListener as TextWriterTraceListener)?.Flush();
+            }
 
             #endregion
 
+            #region The CSMS
+
+            CSMSNode csms;
+
+            try
+            {
+                csms = new CSMSNode(
+
+                           HTTPHostname:             anyAddress
+                                                         ? IPvXAddress.Any
+                                                         : IPv4Address.Localhost,
+
+                           HTTPPort:                 port,
+
+                           HTTPExtAPIDataPath:       accountsPath ?? Path.Combine(RepositoryRoot(), CSMSNode.DefaultHTTPExtAPIDataPath),
+
+                           LoginFile:                new WebLoginFile(
+                                                         loginFilePath ?? Path.Combine(RepositoryRoot(), WebLoginFile.DefaultFileName)
+                                                     ),
+
+                           ConfigFile:               new CSMSConfigFile(
+                                                         configFilePath ?? Path.Combine(RepositoryRoot(), CSMSConfigFile.DefaultFileName)
+                                                     ),
+
+                           Frontend:                 frontend,
+
+                           ConsoleLogLevel:          verbose ? LogLevel.Debug
+                                                         : quiet ? LogLevel.Warning
+                                                         : LogLevel.Info,
+
+                           BridgeDebugLog:           !noTrace
+
+                       );
+            }
+            catch (Exception e)
+            {
+
+                Console.Error.WriteLine($"The CSMS could not be set up: {e.Message}");
+
+                // A CSMS that does not come up at all is the one moment the
+                // stack trace is worth more than a tidy console.
+                if (verbose)
+                    Console.Error.WriteLine(e);
+
+                return 1;
+
+            }
+
+            await using (csms)
+            {
+
+                await csms.Start();
+
+                #region What somebody who just started this needs to know
+
+                Console.WriteLine();
+                Console.WriteLine($"  web interface  {csms.WebInterfaceURL}");
+                Console.WriteLine($"  JSON API       {csms.WebInterfaceURL}api/v1/status");
+                Console.WriteLine($"  event stream   {csms.WebInterfaceURL}api/v1/events");
+                Console.WriteLine($"  HTTPExt API    {csms.WebInterfaceURL}{CSMSNode.DefaultHTTPExtAPIPath.ToString().Trim('/')}/");
+                Console.WriteLine($"  frontend from  {csms.Frontend.Description}");
+                Console.WriteLine($"  web login      user '{csms.Sessions.Username}', {csms.LoginFile.Path}");
+                Console.WriteLine($"  configuration  {csms.ConfigFile.Path}");
+                Console.WriteLine($"  accounts       {csms.ExtAPI.DatabaseFileName}");
+                Console.WriteLine($"  OCPP node      {csms.Node.Id} ({csms.Node.VendorName} {csms.Node.Model})");
+                Console.WriteLine($"  stations       {(csms.OCPPServerEnabled
+                                                              ? $"{csms.OCPPServerURL}{(csms.OCPPServerTLS ? "" : " (unencrypted)")}, " +
+                                                                $"{csms.StationLogins.EnabledCount} login(s)"
+                                                              : "switched off - no charging station can connect")}");
+                Console.WriteLine($"  name servers   {(csms.DNSEnabled ? String.Join(", ", csms.DNSClient.DNSServers) : "switched off")}");
+                Console.WriteLine($"  time server    {csms.NTSClient.Hostname}{(csms.NTSEnabled ? "" : " (switched off)")}");
+
+                if (csms.GeneratedPassword is not null)
+                {
+                    Console.WriteLine();
+                    Console.WriteLine("  ┌─ First start: there was no web login, so one was made up for you ─────────");
+                    Console.WriteLine($"  │  user      {csms.Sessions.Username}");
+                    Console.WriteLine($"  │  password  {csms.GeneratedPassword}");
+                    Console.WriteLine("  │  It is shown here once and kept only as a hash. Write it down.");
+                    Console.WriteLine("  └───────────────────────────────────────────────────────────────────────────");
+                }
+
+                Console.WriteLine();
+                Console.WriteLine("Press Ctrl+C to stop.");
+                Console.WriteLine();
+
+                #endregion
+
+                #region Wait for Ctrl+C
+
+                var stopped = new TaskCompletionSource();
+
+                Console.CancelKeyPress += (_, e) => {
+                    e.Cancel = true;
+                    stopped.TrySetResult();
+                };
+
+                await stopped.Task;
+
+                #endregion
+
+            }
+
+            #endregion
+
+            return 0;
 
         }
 

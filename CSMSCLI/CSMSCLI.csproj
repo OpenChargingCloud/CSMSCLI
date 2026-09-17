@@ -26,4 +26,23 @@
     <ProjectReference Include="..\libs\WWCP_OCPP\WWCP_OCPP_Common\WWCP_OCPP_Common.csproj" />
   </ItemGroup>
 
+  <!--
+    CLI/ is the former interactive test console: a prompt that took OCPP
+    commands - connections, servers, use, setDefaultRegistrationStatus - and
+    sent them at a central system and a CSMS built by hand in the old
+    Program.cs. It is kept because those commands are a working OCPP operator
+    console and nothing else here has one, and it is excluded from the build
+    because CSMSTestCLI wants an OCPP 1.6 central system node beside the 2.1
+    one, and this process now builds a CSMS the way a charging station and a
+    local controller are built: one OCPP 2.1 node, one HTTP server, a web
+    interface in front of it.
+
+    To go back to it, comment this line out and give CSMSTestCLI the two nodes
+    it asks for.
+  -->
+  <ItemGroup>
+    <Compile Remove="CLI\**\*.cs" />
+    <None Include="CLI\**\*.cs" />
+  </ItemGroup>
+
 </Project>
