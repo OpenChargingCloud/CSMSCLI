@@ -28,3 +28,6 @@
 [submodule "libs/ChargyCore.NET"]
 	path = libs/ChargyCore.NET
 	url = https://github.com/OpenChargingCloud/ChargyCore.NET.git
+[submodule "libs/CSMS"]
+	path = libs/CSMS
+	url = https://github.com/OpenChargingCloud/CSMS.git

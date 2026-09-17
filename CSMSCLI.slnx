@@ -1,5 +1,8 @@
 <Solution>
-  <Folder Name="/Dependencies/" />
+  <Folder Name="/Dependencies/">
+    <Project Path="libs/CSMS/CSMS/CSMS.csproj" Id="ab1354df-d6f2-4756-be9a-67666d62dc0f" />
+    <Project Path="libs/CSMS/CSMSTests/CSMSTests.csproj" />
+  </Folder>
   <Folder Name="/Dependencies/ChargyCore/">
     <Project Path="libs/ChargyCore.NET/ChargyCore/ChargyCore.csproj" />
     <Project Path="libs/ChargyCore.NET/ChargyCore.QRCodes/ChargyCore.QRCodes.csproj" />
