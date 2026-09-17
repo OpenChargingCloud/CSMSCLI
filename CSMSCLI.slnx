@@ -75,5 +75,5 @@
     <Project Path="libs/Styx/Styx/Styx.csproj" />
     <Project Path="libs/Styx/StyxTests/StyxTests.csproj" />
   </Folder>
-  <Project Path="CSMS/CSMS.csproj" />
+  <Project Path="CSMSCLI/CSMSCLI.csproj" />
 </Solution>
