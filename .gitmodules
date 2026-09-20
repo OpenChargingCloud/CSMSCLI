@@ -31,3 +31,6 @@
 [submodule "libs/CSMS"]
 	path = libs/CSMS
 	url = https://github.com/OpenChargingCloud/CSMS.git
+[submodule "libs/WWCP_OCPI"]
+	path = libs/WWCP_OCPI
+	url = https://github.com/OpenChargingCloud/WWCP_OCPI.git
