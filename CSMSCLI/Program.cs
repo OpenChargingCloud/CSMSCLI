@@ -100,7 +100,7 @@ namespace cloud.charging.open.CSMS.CLI
         private static void PrintUsage()
         {
             Console.WriteLine("Usage: CSMSCLI [--port <number>] [--any] [--frontend <dist directory>]");
-            Console.WriteLine("               [--web-login <file>] [--config <file>] [--accounts <directory>]");
+            Console.WriteLine("               [--config <file>] [--accounts <directory>]");
             Console.WriteLine("               [--verbose | --quiet] [--no-trace]");
             Console.WriteLine();
             Console.WriteLine("Web interface:");
@@ -110,17 +110,11 @@ namespace cloud.charging.open.CSMS.CLI
             Console.WriteLine("                    bundle embedded in the assembly - use it together with");
             Console.WriteLine("                    'npm run watch' in libs/CSMS/CSMS/Frontend");
             Console.WriteLine();
-            Console.WriteLine("Web login:");
-            Console.WriteLine($"  --web-login <file>  where the web login lives (default: {WebLoginFile.DefaultFileName} below the");
-            Console.WriteLine("                      repository root). Without it a password is made up at the");
-            Console.WriteLine($"                      first start for the user '{WebLoginSettings.DefaultUsername}' and shown once.");
-            Console.WriteLine();
             Console.WriteLine("Accounts:");
-            Console.WriteLine($"  --accounts <dir>    the directory the HTTPExt API keeps its users, organizations");
-            Console.WriteLine($"                      and API keys in (default: {CSMSNode.DefaultHTTPExtAPIDataPath}/ below the repository");
-            Console.WriteLine("                      root). This is the multi-user side of the CSMS and separate");
-            Console.WriteLine("                      from the single web login above, which only opens the web");
-            Console.WriteLine("                      interface.");
+            Console.WriteLine($"  --accounts <dir>    where the accounts live (default: {CSMSNode.DefaultAccountsPath}/ below the");
+            Console.WriteLine("                      repository root): the users, their roles, the organizations and");
+            Console.WriteLine("                      the API keys. Without them a password is made up at the first");
+            Console.WriteLine($"                      start for the user '{CSMSNode.DefaultAdminUser}' and shown once.");
             Console.WriteLine();
             Console.WriteLine("Configuration:");
             Console.WriteLine($"  --config <file>   where the name servers, the time server, the OCPP identification");
@@ -151,7 +145,6 @@ namespace cloud.charging.open.CSMS.CLI
             IPPort?  port            = null;
             var      anyAddress      = false;
             String?  frontendDir     = null;
-            String?  loginFilePath   = null;
             String?  configFilePath  = null;
             String?  accountsPath    = null;
             var      verbose         = false;
@@ -184,14 +177,6 @@ namespace cloud.charging.open.CSMS.CLI
                         if (!TryTakeValue(Arguments, ref i, out frontendDir))
                         {
                             Console.Error.WriteLine("Missing directory after --frontend!");
-                            return 2;
-                        }
-                        break;
-
-                    case "--web-login":
-                        if (!TryTakeValue(Arguments, ref i, out loginFilePath))
-                        {
-                            Console.Error.WriteLine("Missing file after --web-login!");
                             return 2;
                         }
                         break;
@@ -283,11 +268,7 @@ namespace cloud.charging.open.CSMS.CLI
 
                            HTTPPort:                 port,
 
-                           HTTPExtAPIDataPath:       accountsPath ?? Path.Combine(RepositoryRoot(), CSMSNode.DefaultHTTPExtAPIDataPath),
-
-                           LoginFile:                new WebLoginFile(
-                                                         loginFilePath ?? Path.Combine(RepositoryRoot(), WebLoginFile.DefaultFileName)
-                                                     ),
+                           AccountsPath:             accountsPath ?? Path.Combine(RepositoryRoot(), CSMSNode.DefaultAccountsPath),
 
                            ConfigFile:               new CSMSConfigFile(
                                                          configFilePath ?? Path.Combine(RepositoryRoot(), CSMSConfigFile.DefaultFileName)
@@ -328,11 +309,11 @@ namespace cloud.charging.open.CSMS.CLI
                 Console.WriteLine($"  web interface  {csms.WebInterfaceURL}");
                 Console.WriteLine($"  JSON API       {csms.WebInterfaceURL}api/v1/status");
                 Console.WriteLine($"  event stream   {csms.WebInterfaceURL}api/v1/events");
-                Console.WriteLine($"  HTTPExt API    {csms.WebInterfaceURL}{CSMSNode.DefaultHTTPExtAPIPath.ToString().Trim('/')}/");
+                Console.WriteLine($"  HTTPExt API    {csms.WebInterfaceURL}{CSMSNode.ExtAPIPath.ToString().Trim('/')}/");
                 Console.WriteLine($"  frontend from  {csms.Frontend.Description}");
-                Console.WriteLine($"  web login      user '{csms.Sessions.Username}', {csms.LoginFile.Path}");
                 Console.WriteLine($"  configuration  {csms.ConfigFile.Path}");
-                Console.WriteLine($"  accounts       {csms.ExtAPI.DatabaseFileName}");
+                Console.WriteLine($"  accounts       {csms.ExtAPI.Users.Count()} user(s) in {csms.AccountsPath}");
+                Console.WriteLine($"  sign in at     {csms.WebInterfaceURL}{CSMSNode.ExtAPIPath.ToString().Trim('/')}/login");
                 Console.WriteLine($"  OCPP node      {csms.Node.Id} ({csms.Node.VendorName} {csms.Node.Model})");
                 Console.WriteLine($"  stations       {(csms.OCPPServerEnabled
                                                               ? $"{csms.OCPPServerURL}{(csms.OCPPServerTLS ? "" : " (unencrypted)")}, " +
@@ -344,8 +325,8 @@ namespace cloud.charging.open.CSMS.CLI
                 if (csms.GeneratedPassword is not null)
                 {
                     Console.WriteLine();
-                    Console.WriteLine("  ┌─ First start: there was no web login, so one was made up for you ─────────");
-                    Console.WriteLine($"  │  user      {csms.Sessions.Username}");
+                    Console.WriteLine("  ┌─ First start: there were no accounts, so one was made up for you ─────────");
+                    Console.WriteLine($"  │  user      {CSMSNode.DefaultAdminUser}");
                     Console.WriteLine($"  │  password  {csms.GeneratedPassword}");
                     Console.WriteLine("  │  It is shown here once and kept only as a hash. Write it down.");
                     Console.WriteLine("  └───────────────────────────────────────────────────────────────────────────");

@@ -60,13 +60,17 @@ Without that step the build stops at `error CS1566: ... events.css` in whichever
 of those projects it reaches first - a missing build product, not a missing file
 in git.
 
-At the first start there is no web login, so the CSMS makes one up for the user
-`root`, writes its hash to `web-login.json` beside the solution and prints the
+At the first start there are no accounts, so the CSMS makes one up for the user
+`root`, keeps its hash with the other accounts below `accounts/` and prints the
 password once. Then open http://127.0.0.1:2351/ and sign in.
 
+Those accounts are the same kind Hermod's HTTPExt API keeps for every other
+component here, with this CSMS's roles as groups in them, which is what lets one
+sign-in cover several components that share a server.
+
 `dotnet run --project CSMSCLI -- --help` lists the rest: `--port`, `--any`,
-`--web-login <file>`, `--accounts <dir>`, `--frontend <dir>`, `--config
-<file>`, `--verbose`, `--quiet`, `--no-trace`.
+`--accounts <dir>`, `--frontend <dir>`, `--config <file>`, `--verbose`,
+`--quiet`, `--no-trace`.
 
 
 ### The OCPP 1.6 bench
