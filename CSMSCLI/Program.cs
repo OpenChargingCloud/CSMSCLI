@@ -117,8 +117,9 @@ namespace cloud.charging.open.CSMS.CLI
             Console.WriteLine($"                      start for the user '{CSMSNode.DefaultAdminUser}' and shown once.");
             Console.WriteLine();
             Console.WriteLine("Configuration:");
-            Console.WriteLine($"  --config <file>   where the name servers, the time server, the OCPP identification");
-            Console.WriteLine($"                    and the charging station server of this CSMS live (default:");
+            Console.WriteLine($"  --config <file>   where the name servers, the time server, the OCPP identification,");
+            Console.WriteLine($"                    the charging station server and the OCPI identity of this CSMS");
+            Console.WriteLine($"                    live (default:");
             Console.WriteLine($"                    {CSMSConfigFile.DefaultFileName} below the repository root). Without the");
             Console.WriteLine("                    file the CSMS runs on the system defaults; the");
             Console.WriteLine("                    Configuration pages of the web interface write it, and every");
@@ -319,6 +320,8 @@ namespace cloud.charging.open.CSMS.CLI
                                                               ? $"{csms.OCPPServerURL}{(csms.OCPPServerTLS ? "" : " (unencrypted)")}, " +
                                                                 $"{csms.StationLogins.EnabledCount} login(s)"
                                                               : "switched off - no charging station can connect")}");
+                Console.WriteLine($"  OCPI operator  {csms.PartyIdText} '{csms.BusinessDetails.Name}', speaking {String.Join(", ", csms.OCPIVersions.Select(version => version.Label))}");
+                Console.WriteLine($"  partners       {csms.OCPIVersionsURL} - {csms.RemotePartyCount} partner(s), {csms.LocationCount} location(s)");
                 Console.WriteLine($"  name servers   {(csms.DNSEnabled ? String.Join(", ", csms.DNSClient.DNSServers) : "switched off")}");
                 Console.WriteLine($"  time server    {csms.NTSClient.Hostname}{(csms.NTSEnabled ? "" : " (switched off)")}");
 

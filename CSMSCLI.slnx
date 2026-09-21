@@ -33,6 +33,12 @@
     <Project Path="libs/WWCP_ISO15118/WWCP_ISO15118_V2GTP_Tests/WWCP_ISO15118_V2GTP_Tests.csproj" />
     <Project Path="libs/WWCP_ISO15118/WWCP_ISO15118_XMLDSig/WWCP_ISO15118_XMLDSig.csproj" />
   </Folder>
+  <Folder Name="/Dependencies/OCPI/">
+    <Project Path="libs/WWCP_OCPI/WWCP_OCPI_Common/WWCP_OCPI_Common.csproj" />
+    <Project Path="libs/WWCP_OCPI/WWCP_OCPIv2.1.1/WWCP_OCPIv2.1.1.csproj" />
+    <Project Path="libs/WWCP_OCPI/WWCP_OCPIv2.2.1/WWCP_OCPIv2.2.1.csproj" />
+    <Project Path="libs/WWCP_OCPI/WWCP_OCPIv2.3.0/WWCP_OCPIv2.3.0.csproj" />
+  </Folder>
   <Folder Name="/Dependencies/OCPP/">
     <Project Path="libs/WWCP_OCPP/WWCP_OCPP_Common/WWCP_OCPP_Common.csproj" />
   </Folder>

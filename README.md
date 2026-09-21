@@ -2,7 +2,9 @@
 
 This software implements an EV Charging Station Management System: the thing the
 charging stations and the local controllers of an estate dial into, with a web
-interface in front of it. What it is and what it can be told lives in
+interface in front of it. Beside that it is a charge point operator in OCPI -
+peered with e-mobility service providers, publishing the locations its stations
+stand at. What it is and what it can be told lives in
 [libs/CSMS](libs/CSMS); this repository is the command line that starts it and
 the submodules it is built from.
 
