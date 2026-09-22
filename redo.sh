@@ -1,6 +1,11 @@
 #!/bin/sh
+#
+# Add every submodule of .gitmodules again, for a tree whose .git/modules was
+# thrown away.
 
 set -e
+
+cd "$(dirname "$0")"
 
 git config -f .gitmodules --get-regexp '^submodule\..*\.path$' |
     while read path_key path
