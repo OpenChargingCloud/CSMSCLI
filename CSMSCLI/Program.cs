@@ -117,7 +117,7 @@ namespace cloud.charging.open.CSMS.CLI
             Console.WriteLine($"                      start for the user '{CSMSNode.DefaultAdminUser}' and shown once.");
             Console.WriteLine();
             Console.WriteLine("Configuration:");
-            Console.WriteLine($"  --config <file>   where the name servers, the time server, the OCPP identification,");
+            Console.WriteLine($"  --config <file>   where the name servers, the time servers, the OCPP identification,");
             Console.WriteLine($"                    the charging station server and the OCPI identity of this CSMS");
             Console.WriteLine($"                    live (default:");
             Console.WriteLine($"                    {CSMSConfigFile.DefaultFileName} below the repository root). Without the");
@@ -312,6 +312,28 @@ namespace cloud.charging.open.CSMS.CLI
                 Console.WriteLine($"  event stream   {csms.WebInterfaceURL}api/v1/events");
                 Console.WriteLine($"  HTTPExt API    {csms.WebInterfaceURL}{CSMSNode.ExtAPIPath.ToString().Trim('/')}/");
                 Console.WriteLine($"  frontend from  {csms.Frontend.Description}");
+
+                var builtFrom = BuiltFrom.Repositories.ToArray();
+
+                if (builtFrom.Length > 0)
+                {
+
+                    // One line each, and the whole hash. This is meant to be read
+                    // out of a bug report and pasted into a checkout, and an
+                    // abbreviation is a thing somebody then has to guess the rest
+                    // of. The column is as wide as the longest name rather than a
+                    // number picked today, so a repository joining later still
+                    // lines up.
+                    var width = builtFrom.Max(repository => repository.Repository!.Length);
+
+                    for (var i = 0; i < builtFrom.Length; i++)
+                        Console.WriteLine((i == 0 ? "  built from     " : "                 ") +
+                                          builtFrom[i].Repository!.PadRight(width) +
+                                          "  " +
+                                          builtFrom[i].Commit);
+
+                }
+
                 Console.WriteLine($"  configuration  {csms.ConfigFile.Path}");
                 Console.WriteLine($"  accounts       {csms.ExtAPI.Users.Count()} user(s) in {csms.AccountsPath}");
                 Console.WriteLine($"  sign in at     {csms.WebInterfaceURL}{CSMSNode.ExtAPIPath.ToString().Trim('/')}/login");
@@ -323,7 +345,31 @@ namespace cloud.charging.open.CSMS.CLI
                 Console.WriteLine($"  OCPI operator  {csms.PartyIdText} '{csms.BusinessDetails.Name}', speaking {String.Join(", ", csms.OCPIVersions.Select(version => version.Label))}");
                 Console.WriteLine($"  partners       {csms.OCPIVersionsURL} - {csms.RemotePartyCount} partner(s), {csms.LocationCount} location(s)");
                 Console.WriteLine($"  name servers   {(csms.DNSEnabled ? String.Join(", ", csms.DNSClient.DNSServers) : "switched off")}");
-                Console.WriteLine($"  time server    {csms.NTSClient.Hostname}{(csms.NTSEnabled ? "" : " (switched off)")}");
+                #region The time servers
+
+                var bands = csms.TimeSources.Bands();
+                var asked = bands.SelectMany(band => band).ToArray();
+
+                if (asked.Length <= 1)
+                    Console.WriteLine($"  time server    {csms.NTSClient.Hostname}{(csms.NTSEnabled ? "" : " (switched off)")}");
+
+                else
+                {
+
+                    // One line per band, because a band is the unit that is
+                    // asked at once - putting two bands on one line would read
+                    // as six equal servers when it is two and then four.
+                    for (var i = 0; i < bands.Count; i++)
+                        Console.WriteLine((i == 0 ? "  time servers   " : "                 ") +
+                                          String.Join(", ", bands[i].Select(source => source.Hostname.ToString())) +
+                                          (bands.Count > 1 ? $"   (priority {bands[i][0].Priority})" : ""));
+
+                    Console.WriteLine($"                 at least {csms.TimeSources.MinServers} of them must answer" +
+                                      (csms.NTSEnabled ? "" : " - and NTS is switched off"));
+
+                }
+
+                #endregion
 
                 if (csms.GeneratedPassword is not null)
                 {
@@ -331,7 +377,13 @@ namespace cloud.charging.open.CSMS.CLI
                     Console.WriteLine("  ┌─ First start: there were no accounts, so one was made up for you ─────────");
                     Console.WriteLine($"  │  user      {CSMSNode.DefaultAdminUser}");
                     Console.WriteLine($"  │  password  {csms.GeneratedPassword}");
-                    Console.WriteLine("  │  It is shown here once and kept only as a hash. Write it down.");
+                    // Named rather than called "a hash", and read from the
+                    // implementation rather than typed here, so the box cannot
+                    // end up describing a scheme this CSMS no longer uses.
+                    // "i=600000" is also how passwords.db writes it down, which
+                    // is where somebody checking this will look.
+                    Console.WriteLine($"  │  It is shown here once and kept only as a {SecurePassword.PBKDF2SHA256} hash");
+                    Console.WriteLine($"  │  over {SecurePassword.DefaultIterations} iterations. Write it down.");
                     Console.WriteLine("  └───────────────────────────────────────────────────────────────────────────");
                 }
 

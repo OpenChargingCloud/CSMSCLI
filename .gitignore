@@ -260,15 +260,31 @@ paket-files/
 __pycache__/
 *.pyc
 
-# The web login of a running CSMS: a password hash, and nobody else's
-# business. Written at the first start beside the solution.
-web-login.json
+# The accounts of a running CSMS: password hashes, the organizations and API
+# keys, and the cookies of whoever is signed in - nobody else's business.
+# Written at the first start beside the solution. Anchored, so that it stays
+# this one directory and does not quietly swallow a source folder of the same
+# name.
+/accounts/
 
-# What a running CSMS is configured as: its name servers, its time server and
-# what it calls itself in OCPP. A property of this particular installation,
-# not of the source.
+# What a running CSMS is configured as: its name servers, its time servers,
+# its charging station server and who it is in OCPP and OCPI. A property of
+# this particular installation, not of the source.
 configuration.json
 
-# The users, organizations and API keys of the HTTPExt API. Written beside the
-# solution at the first start and belonging to this installation alone.
-CSMS-accounts/
+# What the OCPI library keeps: the partners this operator is peered with and
+# what they pushed, in append-only files of its own, one set per version.
+/ocpi/
+
+# The sign-in this CSMS was given before it had an accounts directory: one
+# user and a PBKDF2 hash of their password, in a file nothing reads any more.
+# Ignored rather than deleted - it is somebody's credential, and throwing away
+# a password hash is not a thing to do as housekeeping.
+#
+# It also has to be ignored now that the build stamp calls a tree dirty when
+# git reports anything at all, untracked files included, because an SDK
+# project compiles every .cs in its directory and a source file never added to
+# git is in the build while a tracked-only check still calls the tree clean.
+# One leftover file would otherwise mark every build dirty, and a marker
+# nobody believes is worse than no marker.
+web-login.json
