@@ -84,7 +84,7 @@ jobs:
 
       - name: Install prerequisites (Debian container)
         if: runner.os == 'Linux'
-        run: apt-get update && apt-get install -y --no-install-recommends ca-certificates curl git jq libicu76 libssl3t64 libstdc++6 tzdata xz-utils && git config --global --add safe.directory '*'
+        run: apt-get update && apt-get install -y --no-install-recommends ca-certificates curl git libicu76 libssl3t64 libstdc++6 tzdata xz-utils && git config --global --add safe.directory '*'
 
       - uses: actions/checkout@v7
         with:
@@ -109,15 +109,6 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: '24.x'
-
-      # See ci.yml: the by-hand step updateAndBuild.sh names.
-      - name: The OCPP stylesheets
-        shell: bash
-        run: |
-          npm install --global sass@1.105.0
-          for script in libs/WWCP_OCPP/*/compileSASS.sh; do
-              bash "$script"
-          done
 
       - name: Build
         run: dotnet build CSMSCLI.slnx --configuration Release
@@ -271,7 +262,7 @@ jobs:
       # a second time, with the script as the tip writes it, and Amendment 1
       # arrives from ISO as a zip archive.
       - name: Install prerequisites
-        run: apt-get update && apt-get install -y --no-install-recommends ca-certificates curl git jq libicu76 libssl3t64 libstdc++6 tzdata unzip xz-utils && git config --global --add safe.directory '*'
+        run: apt-get update && apt-get install -y --no-install-recommends ca-certificates curl git libicu76 libssl3t64 libstdc++6 tzdata unzip xz-utils && git config --global --add safe.directory '*'
 
       # Full history rather than the usual shallow one: counting how far each
       # submodule has moved needs the commits in between to exist.
@@ -329,17 +320,6 @@ jobs:
       - name: Lay the schemas out again, the way the tip wants them
         continue-on-error: true
         run: bash libs/WWCP_ISO15118/tools/download-schemas.sh
-
-      # After the move, so that a stylesheet the tip of WWCP_OCPP added is
-      # compiled too. Not fatal either: a red here is the build's to report.
-      - name: The OCPP stylesheets, as the tip has them
-        continue-on-error: true
-        shell: bash
-        run: |
-          npm install --global sass@1.105.0
-          for script in libs/WWCP_OCPP/*/compileSASS.sh; do
-              bash "$script"
-          done
 
       - name: Build against the tips (informational)
         id: build

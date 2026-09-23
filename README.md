@@ -53,17 +53,15 @@ dotnet run --project CSMSCLI
 The build needs the .NET 10 SDK and Node.js: the web interface is built by npm
 and embedded into the assembly, so the CSMS is one thing to deploy.
 
-The OCPP projects keep their stylesheets as SCSS and their compiled CSS out of
-git, so a fresh clone needs those generated once. It needs `sass` and `jq` on
-the PATH:
+Nothing has to be installed globally beside those two. The TypeScript and SASS
+compilers the libraries pin are installed by `npm ci` on the first build, and
+the OCPP stylesheets are compiled by the build. The one step a fresh clone
+still needs by hand is the ISO 15118 schemas, which are ISO's and a licence you
+accept yourself:
 
 ```
-for f in libs/WWCP_OCPP/*/compileSASS.sh; do bash "$f"; done
+bash libs/WWCP_ISO15118/tools/download-schemas.sh
 ```
-
-Without that step the build stops at `error CS1566: ... events.css` in whichever
-of those projects it reaches first - a missing build product, not a missing file
-in git.
 
 At the first start there are no accounts, so the CSMS makes one up for the user
 `root`, keeps its hash with the other accounts below `accounts/` and prints the

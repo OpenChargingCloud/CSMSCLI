@@ -111,11 +111,10 @@ jobs:
       # downloading a tarball over the REST API — which cannot bring submodules.
       #
       # The rest is what .NET and Node need on a bare Debian: curl, ICU, tzdata,
-      # OpenSSL, ca-certificates and xz-utils for the Node tarball. jq is for the
-      # OCPP stylesheets below; the Windows runner image already has it.
+      # OpenSSL, ca-certificates and xz-utils for the Node tarball.
       - name: Install prerequisites (Debian container)
         if: runner.os == 'Linux'
-        run: apt-get update && apt-get install -y --no-install-recommends ca-certificates curl git jq libicu76 libssl3t64 libstdc++6 tzdata xz-utils && git config --global --add safe.directory '*'
+        run: apt-get update && apt-get install -y --no-install-recommends ca-certificates curl git libicu76 libssl3t64 libstdc++6 tzdata xz-utils && git config --global --add safe.directory '*'
 
       # The libraries are submodules here, pinned, and testing them as pinned is
       # the point: this repository's own question is whether this particular
@@ -148,20 +147,6 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: '24.x'
-
-      # The OCPP projects keep their stylesheets as SCSS and the compiled CSS out
-      # of git, and nothing in their build makes it: each has a compileSASS.sh
-      # that wants sass and jq on the PATH, which updateAndBuild.sh names as the
-      # by-hand step of a fresh clone. This is that step. sass at the version
-      # WWCP_Core pins for its own stylesheets, so the two agree; the output is
-      # gitignored, so the tree stays clean for the build stamp.
-      - name: The OCPP stylesheets
-        shell: bash
-        run: |
-          npm install --global sass@1.105.0
-          for script in libs/WWCP_OCPP/*/compileSASS.sh; do
-              bash "$script"
-          done
 
       # The whole solution rather than only CSMSCLI: "they still compile
       # together at these gitlinks" is the one statement this repository is
