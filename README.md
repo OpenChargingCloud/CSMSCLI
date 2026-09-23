@@ -1,5 +1,8 @@
 # CSMS - Charging Station Management System
 
+[![CI](https://github.com/OpenChargingCloud/CSMSCLI/actions/workflows/ci.yml/badge.svg)](https://github.com/OpenChargingCloud/CSMSCLI/actions/workflows/ci.yml)
+[![Nightly](https://github.com/OpenChargingCloud/CSMSCLI/actions/workflows/nightly.yml/badge.svg)](https://github.com/OpenChargingCloud/CSMSCLI/actions/workflows/nightly.yml)
+
 This software implements an EV Charging Station Management System: the thing the
 charging stations and the local controllers of an estate dial into, with a web
 interface in front of it. Beside that it is a charge point operator in OCPI -

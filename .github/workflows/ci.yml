@@ -1,0 +1,284 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  # Manual runs from the Actions tab ("Run workflow"), same as nightly.yml.
+  workflow_dispatch:
+
+concurrency:
+  # Pull requests: one run per branch, newest wins. Pushes: one run per commit,
+  # and nothing cancels anything — a commit with no verdict is a hole nobody
+  # comes back to fill. Keying the group on the SHA rather than only turning
+  # cancel-in-progress off is what makes that hold for more than two pushes.
+  # The same arrangement as EVCLI, EMSPCLI and the libraries of this stack.
+  group: ci-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+
+  # ---------------------------------------------------------------------------
+  # The ISO 15118 schemas.
+  #
+  # They are in none of these repositories: they are ISO's, published under a
+  # licence that grants use and not redistribution, so a fresh checkout does not
+  # build until they have been fetched. That makes them a build input like the
+  # SDK, and it makes this a job the others depend on rather than a step inside
+  # them. This solution carries the whole ISO 15118 repository - the EXI codec
+  # and every -20 service - so unlike the EMSP it cannot do without them.
+  #
+  # Fetched once per run and handed to both legs: standards.iso.org is somebody
+  # else's server, and the cache means a run only reaches it when the script
+  # itself has changed, which is when the list of URLs has changed. nightly.yml
+  # deliberately skips the cache, so that "ISO moved something" is noticed by a
+  # night rather than by a push.
+  # ---------------------------------------------------------------------------
+  schemas:
+    runs-on: ubuntu-latest
+    steps:
+
+      - uses: actions/checkout@v7
+
+      # Only this one submodule, and at the commit this repository pins: the
+      # script is a list of ISO's URLs plus the layout each project expects,
+      # and the layout that matters is the one the pinned commit was written
+      # against.
+      - name: The ISO 15118 submodule, at the commit pinned here
+        run: git submodule update --init --depth 1 libs/WWCP_ISO15118
+
+      - name: Schemas fetched for this version of the script before
+        id: cache
+        uses: actions/cache@v6
+        with:
+          path: schemas.tar.gz
+          key: iso15118-schemas-${{ hashFiles('libs/WWCP_ISO15118/tools/download-schemas.sh') }}
+
+      # What is worth keeping is the placement rather than the download: every
+      # Schemas/ directory, all of them gitignored, which is why unpacking them
+      # into a checkout later leaves the tree clean for the build stamp.
+      - name: Fetch them from ISO
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          bash libs/WWCP_ISO15118/tools/download-schemas.sh
+          tar -czf schemas.tar.gz $(find libs/WWCP_ISO15118 -type d -name Schemas | sort)
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: iso15118-schemas
+          path: schemas.tar.gz
+          # Read by the next job of the same run, and by nothing else.
+          retention-days: 1
+
+
+  # ---------------------------------------------------------------------------
+  # One leg per platform this CSMS is used on:
+  #
+  #  * Windows, because that is where it is developed and driven by hand.
+  #  * Debian 13, because that is what the rest of this stack is deployed on.
+  #    GitHub has no Debian runner image, so this leg is an Ubuntu runner
+  #    carrying a debian:13 container.
+  #
+  # fail-fast is off on purpose: "red on exactly one platform" is the most
+  # valuable thing a two-leg matrix produces, so one leg must not cancel the
+  # other.
+  # ---------------------------------------------------------------------------
+  build-and-test:
+    needs: schemas
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            leg: windows-latest
+          - os: ubuntu-latest
+            container: debian:13
+            leg: debian-13-container
+    runs-on: ${{ matrix.os }}
+    container: ${{ matrix.container }}
+    steps:
+
+      # Before the checkout, not after it: under the classic 260-character
+      # limit a submodule checkout gives up halfway through with "Filename too
+      # long".
+      - name: Allow long paths (Windows)
+        if: runner.os == 'Windows'
+        run: git config --system core.longpaths true
+
+      # Also before the checkout, and for a sharper reason: git itself. The bare
+      # debian:13 image has none, and actions/checkout without git falls back to
+      # downloading a tarball over the REST API — which cannot bring submodules.
+      #
+      # The rest is what .NET and Node need on a bare Debian: curl, ICU, tzdata,
+      # OpenSSL, ca-certificates and xz-utils for the Node tarball. jq is for the
+      # OCPP stylesheets below; the Windows runner image already has it.
+      - name: Install prerequisites (Debian container)
+        if: runner.os == 'Linux'
+        run: apt-get update && apt-get install -y --no-install-recommends ca-certificates curl git jq libicu76 libssl3t64 libstdc++6 tzdata xz-utils
+
+      # The libraries are submodules here, pinned, and testing them as pinned is
+      # the point: this repository's own question is whether this particular
+      # combination of libraries works together. nightly.yml asks the other.
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: iso15118-schemas
+
+      # And then take the tarball away again: an untracked archive in the
+      # workspace would stamp every assembly of this run "-dirty".
+      - name: Put the schemas where the build expects them
+        shell: bash
+        run: |
+          tar -xzf schemas.tar.gz
+          rm schemas.tar.gz
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+
+      # The web interface is built by npm and webpack from inside the .NET build
+      # — CSMS.csproj runs "npm ci" and "npm run build" and then embeds dist/ as
+      # assembly resources — and WWCP_Core and WWCP_OCPP compile TypeScript with
+      # compilers pinned in their own package.json. package.json asks for 22 or
+      # newer.
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24.x'
+
+      # The OCPP projects keep their stylesheets as SCSS and the compiled CSS out
+      # of git, and nothing in their build makes it: each has a compileSASS.sh
+      # that wants sass and jq on the PATH, which updateAndBuild.sh names as the
+      # by-hand step of a fresh clone. This is that step. sass at the version
+      # WWCP_Core pins for its own stylesheets, so the two agree; the output is
+      # gitignored, so the tree stays clean for the build stamp.
+      - name: The OCPP stylesheets
+        shell: bash
+        run: |
+          npm install --global sass@1.105.0
+          for script in libs/WWCP_OCPP/*/compileSASS.sh; do
+              bash "$script"
+          done
+
+      # The whole solution rather than only CSMSCLI: "they still compile
+      # together at these gitlinks" is the one statement this repository is
+      # uniquely able to make.
+      - name: Build
+        run: dotnet build CSMSCLI.slnx --configuration Release
+
+      # What the .NET build does not cover: webpack type-checks only the modules
+      # it can reach from the entry point. One leg, because TypeScript does not
+      # know which platform it is on.
+      - name: The web interface (type checks)
+        if: matrix.leg == 'debian-13-container'
+        working-directory: libs/CSMS/CSMS/Frontend
+        run: npm run typecheck
+
+      # The CSMS's own tests. Nowhere else runs them — libs/CSMS has no workflow
+      # of its own, by design: it is not built alone, it is built here.
+      - name: Test the CSMS
+        timeout-minutes: 30
+        run: dotnet test libs/CSMS/CSMSTests/CSMSTests.csproj --configuration Release --no-build --logger "console;verbosity=normal" --logger "trx;LogFileName=${{ matrix.leg }}.trx" --results-directory artifacts
+
+      # The question no unit test in this repository asks: does it start?
+      # Everything that only happens at startup happens here — the assemblies of
+      # every library resolve, Hermod binds its HTTP server, the HTTPExt API
+      # builds an account store out of nothing, and the web interface turns out
+      # to be inside the assembly rather than merely to have been built.
+      #
+      # Everything it writes goes to a temporary directory: a first start makes
+      # an account store, a configuration file and the OCPI files, and none of
+      # that belongs in a workspace whose cleanliness the build stamps into
+      # every assembly it produces.
+      #
+      # Two questions are asked of it. "/" must come back as the embedded web
+      # interface. "/api/v1/status" must come back 401, because the JSON API of
+      # a CSMS is nobody's business until somebody has signed in — a 200 there
+      # would mean the door had come off.
+      - name: The CSMS starts and answers (Debian)
+        if: matrix.leg == 'debian-13-container'
+        timeout-minutes: 5
+        shell: bash
+        run: |
+          set -u
+          tmp="$(mktemp -d)"
+          dotnet CSMSCLI/bin/Release/net10.0/CSMSCLI.dll \
+              --port      18125 \
+              --accounts  "$tmp/accounts" \
+              --config    "$tmp/configuration.json" \
+              > "$tmp/console.log" 2>&1 &
+          pid=$!
+
+          # curl -w writes "000" itself when it could not connect, so nothing
+          # may be appended on failure ("000000" is not "000"), and "|| true"
+          # keeps curl's exit 7 from ending this -e shell before it has waited.
+          # Both learned the hard way in EVCLI, runs 35763572789 and
+          # 35764217384. The ${:-000} is for the case where there is no curl.
+          root=000
+          for _ in $(seq 1 60); do
+              root="$(curl -sS -o "$tmp/index.html" -w '%{http_code}' http://127.0.0.1:18125/ 2>/dev/null || true)"
+              root="${root:-000}"
+              if [ "$root" != 000 ]; then
+                  break
+              fi
+              # Gone rather than slow: stop waiting for it.
+              kill -0 "$pid" 2>/dev/null || break
+              sleep 1
+          done
+
+          api="$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:18125/api/v1/status 2>/dev/null || true)"
+          api="${api:-000}"
+
+          # Asked before it is stopped, so that the answer below means something.
+          running=0
+          kill -0 "$pid" 2>/dev/null && running=1
+
+          kill "$pid" 2>/dev/null || true
+          wait "$pid" 2>/dev/null || true
+
+          echo "GET /                -> $root"
+          echo "GET /api/v1/status   -> $api"
+
+          fault=0
+          if [ "$root" != 200 ]; then
+              echo "The web interface did not answer."
+              fault=1
+          elif ! grep -q "<title>CSMS</title>" "$tmp/index.html"; then
+              echo "Something answered, but it is not the embedded web interface."
+              fault=1
+          fi
+          if [ "$api" != 401 ]; then
+              echo "The JSON API answered $api where 401 was expected: it is supposed to be shut to anyone not signed in."
+              fault=1
+          fi
+
+          if [ "$fault" != 0 ]; then
+              echo
+              if [ "$running" = 1 ]; then
+                  echo "It was still running when it was asked."
+              else
+                  echo "It was no longer running when it was asked."
+              fi
+              echo "What it said, without the first-start password:"
+              grep -v -i password "$tmp/console.log" || echo "(nothing at all)"
+              exit 1
+          fi
+
+      # The same question in the form the other leg can answer without process
+      # control: the entry assembly loads, its arguments parse, it exits 0.
+      - name: The CSMS runs (Windows)
+        if: runner.os == 'Windows'
+        run: dotnet CSMSCLI/bin/Release/net10.0/CSMSCLI.dll --help
+
+      # TRX keeps, per test: outcome, duration, error message, stack trace, and
+      # the reason an Assert.Ignore gave — which never reaches the console.
+      # !cancelled() rather than success(): a red run is when these matter most.
+      - name: Upload test results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-results-${{ matrix.leg }}
+          path: artifacts/*.trx

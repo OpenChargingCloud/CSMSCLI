@@ -1,0 +1,361 @@
+name: Nightly
+
+# The counterpart to ci.yml. That workflow gates every push and keeps itself
+# narrow on purpose: the CSMS's own tests, the web interface, and one start.
+# This one asks the two questions a gate should not be asked.
+#
+# The first is wider: every test of every library in this solution, at the
+# gitlinks this repository pins. Each library gates its own tests in its own
+# repository, but nobody there tests this combination of them — Hermod's suite
+# against this Styx, against this Norn, in one process.
+#
+# The second is the opposite of pinning: the submodules moved to their tips, to
+# find out whether advancing the gitlinks would work before somebody advances
+# them.
+#
+# Two things worth knowing about scheduled workflows: they only ever run on the
+# default branch, and GitHub disables them after 60 days without any repository
+# activity. If this stops reporting, that is the first thing to check.
+on:
+  schedule:
+    # 03:47 UTC: after the libraries of this stack (02:17), EVCLI (03:17) and
+    # EMSPCLI (03:37), so that a morning is read in the order the dependencies
+    # are stacked. Not on the hour, because GitHub's scheduler is busiest then.
+    - cron: '47 3 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: nightly-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+
+  # ---------------------------------------------------------------------------
+  # The same schema fetch as ci.yml, deliberately without its cache.
+  #
+  # The gate reaches standards.iso.org only when the script changed, which is
+  # right for something that runs on every push - but it also means the gate
+  # would not notice for months if ISO moved a file or published a corrected
+  # schema. Once a night is the proportionate place to find that out.
+  # ---------------------------------------------------------------------------
+  schemas:
+    runs-on: ubuntu-latest
+    steps:
+
+      - uses: actions/checkout@v7
+
+      - name: The ISO 15118 submodule, at the commit pinned here
+        run: git submodule update --init --depth 1 libs/WWCP_ISO15118
+
+      - name: Fetch the schemas from ISO
+        run: |
+          bash libs/WWCP_ISO15118/tools/download-schemas.sh
+          tar -czf schemas.tar.gz $(find libs/WWCP_ISO15118 -type d -name Schemas | sort)
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: iso15118-schemas
+          path: schemas.tar.gz
+          retention-days: 1
+
+
+  # ---------------------------------------------------------------------------
+  # Everything, at the pinned gitlinks. Same two legs as ci.yml — see there for
+  # why it is exactly Windows and a debian:13 container.
+  # ---------------------------------------------------------------------------
+  full-suite:
+    needs: schemas
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            leg: windows-latest
+          - os: ubuntu-latest
+            container: debian:13
+            leg: debian-13-container
+    runs-on: ${{ matrix.os }}
+    container: ${{ matrix.container }}
+    steps:
+
+      - name: Allow long paths (Windows)
+        if: runner.os == 'Windows'
+        run: git config --system core.longpaths true
+
+      - name: Install prerequisites (Debian container)
+        if: runner.os == 'Linux'
+        run: apt-get update && apt-get install -y --no-install-recommends ca-certificates curl git jq libicu76 libssl3t64 libstdc++6 tzdata xz-utils
+
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: iso15118-schemas
+
+      # And then take the tarball away again: an untracked archive in the
+      # workspace would stamp every assembly of this run "-dirty".
+      - name: Put the schemas where the build expects them
+        shell: bash
+        run: |
+          tar -xzf schemas.tar.gz
+          rm schemas.tar.gz
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24.x'
+
+      # See ci.yml: the by-hand step updateAndBuild.sh names.
+      - name: The OCPP stylesheets
+        shell: bash
+        run: |
+          npm install --global sass@1.105.0
+          for script in libs/WWCP_OCPP/*/compileSASS.sh; do
+              bash "$script"
+          done
+
+      - name: Build
+        run: dotnet build CSMSCLI.slnx --configuration Release
+
+      # Every test project in the solution, which is what makes this different
+      # from the gate: CSMSTests plus Styx, Hermod, Norn, WWCP_Core, the overlay
+      # network, WWCP_OCPP v1.6 and v2.1, the ISO 15118 EXI codec and V2GTP,
+      # ChargyCore, DatexII and OpenADR, all against each other at the versions
+      # pinned here.
+      #
+      # Three categories left out, and they are somebody else's decision rather
+      # than ours: Hermod marks its live DNS probes "LiveDNS", Norn marks its
+      # real NTS-KE and NTP handshakes "External" and "LiveNetwork". A hosted
+      # runner is not a normal client — datacentre egress on UDP/53 and UDP/123
+      # is commonly blocked or rate-limited — so they would fail here for
+      # reasons that say nothing about any of this code.
+      - name: Test everything, as pinned
+        timeout-minutes: 120
+        run: dotnet test CSMSCLI.slnx --configuration Release --no-build --filter "TestCategory!=LiveDNS&TestCategory!=External&TestCategory!=LiveNetwork" --logger "console;verbosity=normal" --logger "trx;LogFileName=${{ matrix.leg }}.trx" --results-directory artifacts
+
+      # The same start as in ci.yml, for the same reason and on the same leg.
+      # Repeating it costs a minute and catches the kind of failure that only
+      # shows up when nobody pushed: a dependency resolved at restore time that
+      # moved. !cancelled(), because a red suite above says nothing about
+      # whether the thing still starts.
+      - name: The CSMS starts and answers (Debian)
+        if: ${{ matrix.leg == 'debian-13-container' && !cancelled() }}
+        timeout-minutes: 5
+        shell: bash
+        run: |
+          set -u
+          tmp="$(mktemp -d)"
+          dotnet CSMSCLI/bin/Release/net10.0/CSMSCLI.dll \
+              --port      18125 \
+              --accounts  "$tmp/accounts" \
+              --config    "$tmp/configuration.json" \
+              > "$tmp/console.log" 2>&1 &
+          pid=$!
+
+          # See ci.yml for why these curl calls look exactly like this.
+          root=000
+          for _ in $(seq 1 60); do
+              root="$(curl -sS -o "$tmp/index.html" -w '%{http_code}' http://127.0.0.1:18125/ 2>/dev/null || true)"
+              root="${root:-000}"
+              if [ "$root" != 000 ]; then
+                  break
+              fi
+              kill -0 "$pid" 2>/dev/null || break
+              sleep 1
+          done
+
+          api="$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:18125/api/v1/status 2>/dev/null || true)"
+          api="${api:-000}"
+
+          running=0
+          kill -0 "$pid" 2>/dev/null && running=1
+
+          kill "$pid" 2>/dev/null || true
+          wait "$pid" 2>/dev/null || true
+
+          echo "GET /                -> $root"
+          echo "GET /api/v1/status   -> $api"
+
+          fault=0
+          if [ "$root" != 200 ]; then
+              echo "The web interface did not answer."
+              fault=1
+          elif ! grep -q "<title>CSMS</title>" "$tmp/index.html"; then
+              echo "Something answered, but it is not the embedded web interface."
+              fault=1
+          fi
+          if [ "$api" != 401 ]; then
+              echo "The JSON API answered $api where 401 was expected: it is supposed to be shut to anyone not signed in."
+              fault=1
+          fi
+
+          if [ "$fault" != 0 ]; then
+              echo
+              if [ "$running" = 1 ]; then
+                  echo "It was still running when it was asked."
+              else
+                  echo "It was no longer running when it was asked."
+              fi
+              echo "What it said, without the first-start password:"
+              grep -v -i password "$tmp/console.log" || echo "(nothing at all)"
+              exit 1
+          fi
+
+      # The NuGet packages of the whole solution, transitives included. One leg,
+      # because this is a property of the dependency graph and not of the
+      # operating system.
+      #
+      # Informational: an advisory published overnight is news about the world,
+      # not a regression here. That is also why it lives in the night and not in
+      # the gate: a gate that can go red for something no push caused stops
+      # being read as a gate.
+      - name: Known vulnerabilities (informational)
+        if: ${{ matrix.leg == 'debian-13-container' && !cancelled() }}
+        continue-on-error: true
+        shell: bash
+        run: |
+          set +e
+          {
+            echo '## Known vulnerabilities (informational)'
+            echo
+            echo 'Every project of the solution, transitive packages included.'
+            echo 'Informational: an advisory published overnight is news, not a'
+            echo 'regression, so this step cannot turn the night red.'
+            echo
+            echo '```'
+            dotnet list CSMSCLI.slnx package --vulnerable --include-transitive 2>&1 \
+              | grep -v "has no vulnerable packages given the current sources" \
+              | tail -60
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit 0
+
+      - name: Upload test results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-results-${{ matrix.leg }}
+          path: artifacts/*.trx
+
+
+  # ---------------------------------------------------------------------------
+  # The other question: what would happen if the gitlinks were advanced today?
+  #
+  # This repository pins, which is right for something that is deployed — but
+  # it means an upstream change is invisible here until somebody advances a
+  # gitlink and finds out by hand. This job does that instead, every night and
+  # without changing anything.
+  #
+  # Informational throughout. A red here is news about a library, not a
+  # regression in this repository: the pinned combination is what CI gates.
+  # One leg, because "does the new Hermod still compile against this CSMS" is
+  # not a question about the operating system.
+  # ---------------------------------------------------------------------------
+  submodules-at-their-tips:
+    needs: schemas
+    runs-on: ubuntu-latest
+    container: debian:13
+    steps:
+
+      # unzip on top of what the other legs need: this job fetches the schemas
+      # a second time, with the script as the tip writes it, and Amendment 1
+      # arrives from ISO as a zip archive.
+      - name: Install prerequisites
+        run: apt-get update && apt-get install -y --no-install-recommends ca-certificates curl git jq libicu76 libssl3t64 libstdc++6 tzdata unzip xz-utils
+
+      # Full history rather than the usual shallow one: counting how far each
+      # submodule has moved needs the commits in between to exist.
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: iso15118-schemas
+
+      - name: Put the schemas where the build expects them
+        run: |
+          tar -xzf schemas.tar.gz
+          rm schemas.tar.gz
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24.x'
+
+      # git submodule status prints "<sha> <path> (<describe>)". Remembered
+      # before anything moves, so that afterwards each one can be asked how far
+      # it went. --remote ignores the sha recorded here and takes the tip of
+      # each submodule's remote HEAD. Not --recursive: none of them has
+      # submodules of its own.
+      - name: Move every submodule to its tip
+        shell: bash
+        run: |
+          git submodule status | awk '{ print $2, $1 }' > "$RUNNER_TEMP/pinned.txt"
+          git submodule update --remote
+          {
+            echo '## The submodules at their tips'
+            echo
+            echo 'What has happened upstream since the gitlinks here were last advanced.'
+            echo
+            echo '```'
+            while read -r path sha; do
+              sha="${sha#[+-]}"
+              ahead="$(git -C "$path" rev-list --count "$sha"..HEAD 2>/dev/null || echo '?')"
+              printf '%-26s %4s commit(s) ahead   %s\n' "$path" "$ahead" "$(git -C "$path" rev-parse HEAD)"
+            done < "$RUNNER_TEMP/pinned.txt"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # The schemas were unpacked before the submodules moved, so if the tip of
+      # the ISO 15118 repository changed where a project expects them, they are
+      # in the wrong place now. Laying them out again from the tip's own script
+      # is the point rather than a nuisance. Not fatal: an unreachable ISO says
+      # nothing about any library, and what was unpacked above then stands.
+      - name: Lay the schemas out again, the way the tip wants them
+        continue-on-error: true
+        run: bash libs/WWCP_ISO15118/tools/download-schemas.sh
+
+      # After the move, so that a stylesheet the tip of WWCP_OCPP added is
+      # compiled too. Not fatal either: a red here is the build's to report.
+      - name: The OCPP stylesheets, as the tip has them
+        continue-on-error: true
+        shell: bash
+        run: |
+          npm install --global sass@1.105.0
+          for script in libs/WWCP_OCPP/*/compileSASS.sh; do
+              bash "$script"
+          done
+
+      - name: Build against the tips (informational)
+        id: build
+        continue-on-error: true
+        run: dotnet build CSMSCLI.slnx --configuration Release
+
+      - name: Test against the tips (informational)
+        if: steps.build.outcome == 'success'
+        continue-on-error: true
+        timeout-minutes: 120
+        run: dotnet test CSMSCLI.slnx --configuration Release --no-build --filter "TestCategory!=LiveDNS&TestCategory!=External&TestCategory!=LiveNetwork" --logger "console;verbosity=normal"
+
+      - name: Say how it went
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: |
+          {
+            echo
+            echo "Build against the tips: ${{ steps.build.outcome }}"
+            echo
+            echo 'Informational. The gitlinks in this repository are unchanged and'
+            echo 'CI gates them as they are; this only says what advancing them'
+            echo 'would cost today.'
+          } >> "$GITHUB_STEP_SUMMARY"
