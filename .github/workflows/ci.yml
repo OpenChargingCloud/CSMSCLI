@@ -115,7 +115,7 @@ jobs:
       # OCPP stylesheets below; the Windows runner image already has it.
       - name: Install prerequisites (Debian container)
         if: runner.os == 'Linux'
-        run: apt-get update && apt-get install -y --no-install-recommends ca-certificates curl git jq libicu76 libssl3t64 libstdc++6 tzdata xz-utils
+        run: apt-get update && apt-get install -y --no-install-recommends ca-certificates curl git jq libicu76 libssl3t64 libstdc++6 tzdata xz-utils && git config --global --add safe.directory '*'
 
       # The libraries are submodules here, pinned, and testing them as pinned is
       # the point: this repository's own question is whether this particular
@@ -257,6 +257,11 @@ jobs:
 
           echo "GET /                -> $root"
           echo "GET /api/v1/status   -> $api"
+
+          # What the banner says this was built from - in every run, not only a
+          # red one, because a stamp that reads "unknown" or "-dirty" is worth
+          # seeing while everything else is green.
+          awk '/^  built from/ { f = 1 } f && !/^  built from/ && !/^                 / { f = 0 } f' "$tmp/console.log" || true
 
           fault=0
           if [ "$root" != 200 ]; then

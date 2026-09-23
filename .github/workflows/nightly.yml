@@ -84,7 +84,7 @@ jobs:
 
       - name: Install prerequisites (Debian container)
         if: runner.os == 'Linux'
-        run: apt-get update && apt-get install -y --no-install-recommends ca-certificates curl git jq libicu76 libssl3t64 libstdc++6 tzdata xz-utils
+        run: apt-get update && apt-get install -y --no-install-recommends ca-certificates curl git jq libicu76 libssl3t64 libstdc++6 tzdata xz-utils && git config --global --add safe.directory '*'
 
       - uses: actions/checkout@v7
         with:
@@ -197,6 +197,11 @@ jobs:
           echo "GET /                -> $root"
           echo "GET /api/v1/status   -> $api"
 
+          # What the banner says this was built from - in every run, not only a
+          # red one, because a stamp that reads "unknown" or "-dirty" is worth
+          # seeing while everything else is green.
+          awk '/^  built from/ { f = 1 } f && !/^  built from/ && !/^                 / { f = 0 } f' "$tmp/console.log" || true
+
           fault=0
           if [ "$root" != 200 ]; then
               echo "The web interface did not answer."
@@ -282,7 +287,7 @@ jobs:
       # a second time, with the script as the tip writes it, and Amendment 1
       # arrives from ISO as a zip archive.
       - name: Install prerequisites
-        run: apt-get update && apt-get install -y --no-install-recommends ca-certificates curl git jq libicu76 libssl3t64 libstdc++6 tzdata unzip xz-utils
+        run: apt-get update && apt-get install -y --no-install-recommends ca-certificates curl git jq libicu76 libssl3t64 libstdc++6 tzdata unzip xz-utils && git config --global --add safe.directory '*'
 
       # Full history rather than the usual shallow one: counting how far each
       # submodule has moved needs the commits in between to exist.
