@@ -272,6 +272,20 @@ __pycache__/
 # this particular installation, not of the source.
 configuration.json
 
+# Written beside that file by the charging station server, and a property of
+# this installation rather than of the source: its own keys, private keys
+# included; the certificates it trusts charging stations by; and the charging
+# stations allowed to connect, with their password hashes. The last is saved
+# through a ".tmp" file first, which "*.tmp" further up covers.
+#
+# Anchored like the accounts. And, as with the logs, this keeps the build
+# stamp honest: it calls a tree dirty when git reports anything at all,
+# untracked files included, so a store written at run time would mark every
+# build after it dirty.
+/ocpp-server-keys/
+/ocpp-client-trust/
+/ocpp-stations.json
+
 # What the OCPI library keeps: the partners this operator is peered with and
 # what they pushed, in append-only files of its own, one set per version.
 /ocpi/
