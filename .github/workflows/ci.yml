@@ -154,13 +154,21 @@ jobs:
       - name: Build
         run: dotnet build CSMSCLI.slnx --configuration Release
 
-      # What the .NET build does not cover: webpack type-checks only the modules
-      # it can reach from the entry point. One leg, because TypeScript does not
-      # know which platform it is on.
-      - name: The web interface (type checks)
+      # What the .NET build does not cover. webpack type-checks the modules it
+      # can reach from the entry point, which leaves out the test files and
+      # anything not imported yet; and the frontend's own tests are run by node,
+      # so nothing in a dotnet build would ever execute them.
+      #
+      # node_modules is already there - the build put it there - so this costs
+      # seconds. One leg, because TypeScript does not know which platform it is
+      # on, and a second run would only make one red look like two failures.
+      - name: The web interface (type checks and its own tests)
         if: matrix.leg == 'debian-13-container'
         working-directory: libs/CSMS/CSMS/Frontend
-        run: npm run typecheck
+        run: |
+          npm run typecheck
+          npm run typecheck:test
+          npm test
 
       # The CSMS's own tests. Nowhere else runs them — libs/CSMS has no workflow
       # of its own, by design: it is not built alone, it is built here.
