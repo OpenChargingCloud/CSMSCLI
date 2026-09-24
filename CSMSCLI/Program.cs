@@ -359,8 +359,13 @@ namespace cloud.charging.open.CSMS.CLI
                 var bands = csms.TimeSources.Bands();
                 var asked = bands.SelectMany(band => band).ToArray();
 
+                // The group's one server where it has one, which is not always
+                // the host of the single client the detailed test starts from:
+                // a list naming one server leaves that client where it was.
+                // Trimmed, like every name here that is read rather than
+                // written back into a file.
                 if (asked.Length <= 1)
-                    Console.WriteLine($"  time server    {csms.NTSClient.Hostname}{(csms.NTSEnabled ? "" : " (switched off)")}");
+                    Console.WriteLine($"  time server    {(asked.Length == 1 ? asked[0].Hostname : csms.NTSClient.Hostname).Trimmed}{(csms.NTSEnabled ? "" : " (switched off)")}");
 
                 else
                 {
@@ -370,7 +375,7 @@ namespace cloud.charging.open.CSMS.CLI
                     // as six equal servers when it is two and then four.
                     for (var i = 0; i < bands.Count; i++)
                         Console.WriteLine((i == 0 ? "  time servers   " : "                 ") +
-                                          String.Join(", ", bands[i].Select(source => source.Hostname.ToString())) +
+                                          String.Join(", ", bands[i].Select(source => source.Hostname.Trimmed)) +
                                           (bands.Count > 1 ? $"   (priority {bands[i][0].Priority})" : ""));
 
                     Console.WriteLine($"                 at least {csms.TimeSources.MinServers} of them must answer" +
