@@ -324,11 +324,20 @@ namespace cloud.charging.open.CSMS.CLI
                     // of. The column is as wide as the longest name rather than a
                     // number picked today, so a repository joining later still
                     // lines up.
-                    var width = builtFrom.Max(repository => repository.Repository!.Length);
+                    // Where two repositories share a directory name - none do
+                    // in this tree - the name alone would not say which line is
+                    // which, so the assembly is named as well. Adds nothing
+                    // while the names are distinct.
+                    String Label(LoadedAssembly repository)
+                        => builtFrom.Count(other => other.Repository == repository.Repository) > 1
+                               ? $"{repository.Repository} ({repository.Name})"
+                               : repository.Repository!;
+
+                    var width = builtFrom.Max(repository => Label(repository).Length);
 
                     for (var i = 0; i < builtFrom.Length; i++)
                         Console.WriteLine((i == 0 ? "  built from     " : "                 ") +
-                                          builtFrom[i].Repository!.PadRight(width) +
+                                          Label(builtFrom[i]).PadRight(width) +
                                           "  " +
                                           builtFrom[i].Commit);
 
