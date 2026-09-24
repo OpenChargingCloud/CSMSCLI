@@ -20,6 +20,7 @@
 using org.GraphDefined.Vanaheimr.Hermod;
 using org.GraphDefined.Vanaheimr.Hermod.HTTP;
 
+using cloud.charging.open.CSMS.CommandLine;
 using cloud.charging.open.CSMS.Configuration;
 using cloud.charging.open.CSMS.Logging;
 using cloud.charging.open.CSMS.Web;
@@ -32,7 +33,7 @@ namespace cloud.charging.open.CSMS.CLI
 {
 
     /// <summary>
-    /// One CSMS, with its web interface, until Ctrl+C.
+    /// One CSMS, with its web interface and a prompt, until 'quit' or Ctrl+C.
     /// </summary>
     public class Program
     {
@@ -138,6 +139,11 @@ namespace cloud.charging.open.CSMS.CLI
             Console.WriteLine("                    falls out of the web interface's last 2000 entries, is gone.");
             Console.WriteLine();
             Console.WriteLine("Whatever the console shows, the web interface shows the whole log under 'Logs'.");
+            Console.WriteLine();
+            Console.WriteLine("Once it is up, the console is a prompt: 'help' lists what can be typed there,");
+            Console.WriteLine("Tab completes it, and 'quit' or Ctrl+C stops the CSMS. Started where there is");
+            Console.WriteLine("no terminal - from a script, under a service manager, in CI, or with the output");
+            Console.WriteLine("going into a file - there is no prompt and it simply runs.");
         }
 
         #endregion
@@ -432,21 +438,133 @@ namespace cloud.charging.open.CSMS.CLI
                 }
 
                 Console.WriteLine();
-                Console.WriteLine("Press Ctrl+C to stop.");
-                Console.WriteLine();
 
                 #endregion
 
-                #region Wait for Ctrl+C
+                #region The command line, until 'quit' or Ctrl+C
+
+                // Whether anybody can type here at all. Started from a script,
+                // from a service manager or in CI, this process has no terminal
+                // on its input and Console.ReadKey throws rather than waiting -
+                // and there would be nobody to type anyway. Then the CSMS simply
+                // runs, exactly as it did before there was a command line, and
+                // the web interface is how it is spoken to.
+                //
+                // The output counts too: the prompt is drawn by moving the
+                // cursor, and with the output going into "| tee" or a file there
+                // is no cursor to move. Measured on Windows with the vehicle,
+                // whose prompt then looked at its input only: the prompt threw
+                // while drawing itself, before a key was pressed, and the
+                // program was gone within 200 ms of its banner - with exit code
+                // 0, a program that said all was well.
+                var canBeTypedAt = !Console.IsInputRedirected &&
+                                   !Console.IsOutputRedirected;
+
+                Console.WriteLine(canBeTypedAt
+                                      ? "Type 'help' for what can be typed here, 'quit' or Ctrl+C to stop."
+                                      : "Press Ctrl+C to stop. (No terminal here, so nothing to type at.)");
+                Console.WriteLine();
 
                 var stopped = new TaskCompletionSource();
 
+                // Ctrl+C still means stop, as it always has here. The command
+                // line adds a handler of its own for it, which cancels whatever
+                // command is running; both fire, and that is the intended
+                // reading of Ctrl+C - abandon what is running and shut the CSMS
+                // down. 'quit' is the same thing said politely.
                 Console.CancelKeyPress += (_, e) => {
                     e.Cancel = true;
                     stopped.TrySetResult();
                 };
 
-                await stopped.Task;
+                if (canBeTypedAt)
+                {
+
+                    var cli             = new CSMSCommandLine(csms);
+                    var brokeAtOnce     = false;
+
+                    while (true)
+                    {
+
+                        // From here two things write on one screen: this command
+                        // line, and the CSMS's log from whichever thread did the
+                        // thing it is reporting. So the log stops writing of its
+                        // own accord and asks the command line for the screen
+                        // instead - which takes the half-typed command off it,
+                        // writes the entry whole, and puts the command back with
+                        // the cursor where it was.
+                        csms.ShareConsoleWith(cli.WriteBlock);
+
+                        // On a thread of its own, because Console.ReadKey blocks
+                        // the one it is called on: awaited directly, the command
+                        // line would keep this thread inside ReadKey and Ctrl+C
+                        // would have nobody left to wake.
+                        var since   = System.Diagnostics.Stopwatch.GetTimestamp();
+                        var typing  = Task.Run(cli.Run);
+
+                        await Task.WhenAny(stopped.Task, typing);
+
+                        if (!typing.IsFaulted)
+                            break;
+
+                        // A command line that broke is not somebody asking for
+                        // the CSMS to stop. What broke the vehicle's and the
+                        // station's first was a line typed wider than the
+                        // window: until Styx learned to show such a line through
+                        // a window onto it, it threw out of the line editor -
+                        // measured in 80 columns, "Parameter 'left', actual
+                        // value was 80" - and a program that took that for
+                        // 'quit' shut down with exit code 0. That cause is gone;
+                        // this is for the next one.
+                        //
+                        // The console goes back to the log first, with a lock
+                        // of its own, because the command line's way of writing
+                        // may be what broke: a prompt that fails while drawing
+                        // itself stays registered as the line on the screen,
+                        // and every entry after that fails trying to take it
+                        // off again.
+                        //
+                        // Then a new prompt - unless the last one was already
+                        // a new one and broke again the moment it started.
+                        // That is a console a prompt cannot be drawn on at all,
+                        // and asking a third time would only fail a third time.
+                        // How fast the first one broke says nothing: a line
+                        // pasted in straight after the start is still a line.
+                        var padlock = new Lock();
+
+                        csms.ShareConsoleWith(write => { lock (padlock) { write(); } });
+
+                        var atOnce = System.Diagnostics.Stopwatch.GetElapsedTime(since) < TimeSpan.FromSeconds(1);
+                        var giveUp = atOnce && brokeAtOnce;
+
+                        brokeAtOnce = atOnce;
+
+                        // On one line, as every entry is: the message of an
+                        // exception may carry line breaks of its own, and in
+                        // the log file a second line has no time, no level and
+                        // no tags.
+                        var why = typing.Exception?.GetBaseException().Message.ReplaceLineEndings(" ");
+
+                        csms.Log.Warning(
+                            $"The command line stopped working: {why} " +
+                            (giveUp
+                                 ? "A new one broke again as soon as it started, so there is none; the CSMS keeps running, and Ctrl+C stops it."
+                                 : "A new one is started."),
+                            "cli"
+                        );
+
+                        if (giveUp)
+                        {
+                            await stopped.Task;
+                            break;
+                        }
+
+                    }
+
+                }
+
+                else
+                    await stopped.Task;
 
                 #endregion
 
