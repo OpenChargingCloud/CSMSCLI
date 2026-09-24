@@ -102,6 +102,7 @@ namespace cloud.charging.open.CSMS.CLI
             Console.WriteLine("Usage: CSMSCLI [--port <number>] [--any] [--frontend <dist directory>]");
             Console.WriteLine("               [--config <file>] [--accounts <directory>]");
             Console.WriteLine("               [--verbose | --quiet] [--no-trace]");
+            Console.WriteLine("               [--log-file <dir>] [--no-log-file]");
             Console.WriteLine();
             Console.WriteLine("Web interface:");
             Console.WriteLine($"  --port <number>   TCP port to listen on (default: {CSMSNode.DefaultHTTPPort})");
@@ -129,6 +130,12 @@ namespace cloud.charging.open.CSMS.CLI
             Console.WriteLine("  -v, --verbose     write every entry to the console, down to the debug ones");
             Console.WriteLine("  -q, --quiet       write only warnings and worse");
             Console.WriteLine("      --no-trace    do not pick up what the libraries below write with DebugX");
+            Console.WriteLine("      --log-file <dir>");
+            Console.WriteLine($"                    where the log files go (default: {CSMSNode.DefaultLogPath}/ below the repository");
+            Console.WriteLine("                    root). One file per day, every entry down to the debug ones, and");
+            Console.WriteLine("                    nothing is ever deleted.");
+            Console.WriteLine("      --no-log-file do not write one. Then what the console did not show, and what");
+            Console.WriteLine("                    falls out of the web interface's last 2000 entries, is gone.");
             Console.WriteLine();
             Console.WriteLine("Whatever the console shows, the web interface shows the whole log under 'Logs'.");
         }
@@ -148,6 +155,8 @@ namespace cloud.charging.open.CSMS.CLI
             String?  frontendDir     = null;
             String?  configFilePath  = null;
             String?  accountsPath    = null;
+            String?  logPath         = null;
+            var      noLogFile       = false;
             var      verbose         = false;
             var      quiet           = false;
             var      noTrace         = false;
@@ -196,6 +205,18 @@ namespace cloud.charging.open.CSMS.CLI
                             Console.Error.WriteLine("Missing file after --config!");
                             return 2;
                         }
+                        break;
+
+                    case "--log-file":
+                        if (!TryTakeValue(Arguments, ref i, out logPath))
+                        {
+                            Console.Error.WriteLine("Missing directory after --log-file!");
+                            return 2;
+                        }
+                        break;
+
+                    case "--no-log-file":
+                        noLogFile = true;
                         break;
 
                     case "-v":
@@ -280,6 +301,15 @@ namespace cloud.charging.open.CSMS.CLI
                            ConsoleLogLevel:          verbose ? LogLevel.Debug
                                                          : quiet ? LogLevel.Warning
                                                          : LogLevel.Info,
+
+                           // On unless it is switched off. A console nobody
+                           // was watching kept nothing, and the log a browser
+                           // shows goes with the process - so the one place an
+                           // afternoon's question can still be answered from is
+                           // a file.
+                           LogPath:                  noLogFile
+                                                         ? null
+                                                         : logPath ?? Path.Combine(RepositoryRoot(), CSMSNode.DefaultLogPath),
 
                            BridgeDebugLog:           !noTrace
 

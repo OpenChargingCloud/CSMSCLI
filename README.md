@@ -73,7 +73,18 @@ sign-in cover several components that share a server.
 
 `dotnet run --project CSMSCLI -- --help` lists the rest: `--port`, `--any`,
 `--accounts <dir>`, `--frontend <dir>`, `--config <file>`, `--verbose`,
-`--quiet`, `--no-trace`.
+`--quiet`, `--no-trace`, `--log-file <dir>`, `--no-log-file`.
+
+Everything that happens is written three times over, because the three answer
+different questions. The **console** shows what is going on to whoever is
+watching, at the level `--verbose` and `--quiet` choose. The **Logs** page
+keeps the last two thousand entries for whoever asks, and loses them when the
+process ends. And `logs/` beside the solution keeps one file per day, every
+entry down to the debug ones, for the afternoon somebody asks what happened
+last night - `--log-file <dir>` puts it elsewhere, `--no-log-file` leaves it
+out, and nothing in it is ever deleted. A disk that cannot take the file is
+said once on stderr rather than with every entry; once it can, the file begins
+again with a line saying how many entries are missing from it and since when.
 
 
 ### The OCPP 1.6 bench

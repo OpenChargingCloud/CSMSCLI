@@ -276,6 +276,15 @@ configuration.json
 # what they pushed, in append-only files of its own, one set per version.
 /ocpi/
 
+# What this CSMS wrote down about its own runs. One file per day, and a record
+# of what this machine did rather than of what the source says - the same
+# reason as the directories above, and the same anchor.
+#
+# "*.log" further up already covers the files; this covers the directory, so
+# that the build stamp does not start calling every tree dirty the first time
+# somebody puts something else in there.
+/logs/
+
 # The sign-in this CSMS was given before it had an accounts directory: one
 # user and a PBKDF2 hash of their password, in a file nothing reads any more.
 # Ignored rather than deleted - it is somebody's credential, and throwing away
