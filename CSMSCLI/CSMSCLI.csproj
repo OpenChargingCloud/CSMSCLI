@@ -19,6 +19,7 @@
     <ProjectReference Include="..\libs\WWCP_Core\WWCP_Core\WWCP_Core.csproj" />
     <ProjectReference Include="..\libs\WWCP_Core\WWCP_OverlayNetworking\WWCP_OverlayNetworking.csproj" />
     <ProjectReference Include="..\libs\WWCP_DatexII\WWCP_DatexII\WWCP_DatexII.csproj" />
+    <ProjectReference Include="..\libs\WWCP_Node\WWCP_Node\WWCP_Node.csproj" />
     <ProjectReference Include="..\libs\WWCP_OCPP\WWCP_OCPPv1.6\WWCP_OCPPv1.6.csproj" />
     <ProjectReference Include="..\libs\WWCP_OCPP\WWCP_OCPPv1.6_CentralSystem\WWCP_OCPPv1.6_CentralSystem.csproj" />
     <ProjectReference Include="..\libs\WWCP_OCPP\WWCP_OCPPv2.1\WWCP_OCPPv2.1.csproj" />

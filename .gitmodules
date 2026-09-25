@@ -34,3 +34,9 @@
 [submodule "libs/WWCP_OCPI"]
 	path = libs/WWCP_OCPI
 	url = https://github.com/OpenChargingCloud/WWCP_OCPI.git
+[submodule "libs/WWCP_Node"]
+	path = libs/WWCP_Node
+	url = https://github.com/OpenChargingCloud/WWCP_Node.git
+[submodule "libs/Urdr"]
+	path = libs/Urdr
+	url = https://github.com/Vanaheimr/Urdr.git

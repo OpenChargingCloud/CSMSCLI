@@ -74,6 +74,8 @@
     <Project Path="libs/WWCP_Core/WWCP_OverlayNetworking/WWCP_OverlayNetworking.csproj" />
     <Project Path="libs/WWCP_Core/WWCP_OverlayNetworking2/WWCP_OverlayNetworking2.csproj" />
     <Project Path="libs/WWCP_Core/WWCP_OverlayNetworking_Tests/WWCP_OverlayNetworking_Tests.csproj" />
+    <Project Path="libs/WWCP_Node/WWCP_Node/WWCP_Node.csproj" />
+    <Project Path="libs/WWCP_Node/WWCP_Node_Tests/WWCP_Node_Tests.csproj" />
   </Folder>
   <Folder Name="/Dependencies/Vanaheimr/">
     <Project Path="libs/Hermod/Hermod/Hermod.csproj" />
@@ -83,6 +85,8 @@
     <Project Path="libs/Norn/NornTests/NornTests.csproj" />
     <Project Path="libs/Styx/Styx/Styx.csproj" />
     <Project Path="libs/Styx/StyxTests/StyxTests.csproj" />
+    <Project Path="libs/Urdr/Urdr/Urdr.csproj" />
+    <Project Path="libs/Urdr/UrdrTests/UrdrTests.csproj" />
   </Folder>
   <Project Path="CSMSCLI/CSMSCLI.csproj" />
 </Solution>

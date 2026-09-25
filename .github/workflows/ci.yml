@@ -170,6 +170,15 @@ jobs:
           npm run typecheck:test
           npm test
 
+      # The node below the CSMS: the configuration file, the log, the time
+      # servers, the accounts' roles and the ports, which every one of these
+      # programs has alike. libs/WWCP_Node has a gate of its own, but that one
+      # builds it against whatever its libraries are on the day; this runs its
+      # tests against the versions pinned here, before the CSMS's.
+      - name: Test the node
+        timeout-minutes: 10
+        run: dotnet test libs/WWCP_Node/WWCP_Node_Tests/WWCP_Node_Tests.csproj --configuration Release --no-build --logger "console;verbosity=normal" --logger "trx;LogFileName=node-${{ matrix.leg }}.trx" --results-directory artifacts
+
       # The CSMS's own tests. Nowhere else runs them — libs/CSMS has no workflow
       # of its own, by design: it is not built alone, it is built here.
       - name: Test the CSMS

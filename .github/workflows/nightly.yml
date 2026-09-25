@@ -114,10 +114,10 @@ jobs:
         run: dotnet build CSMSCLI.slnx --configuration Release
 
       # Every test project in the solution, which is what makes this different
-      # from the gate: CSMSTests plus Styx, Hermod, Norn, WWCP_Core, the overlay
-      # network, WWCP_OCPP v1.6 and v2.1, the ISO 15118 EXI codec and V2GTP,
-      # ChargyCore, DatexII and OpenADR, all against each other at the versions
-      # pinned here.
+      # from the gate: CSMSTests and WWCP_Node_Tests plus Styx, Hermod, Norn,
+      # Urdr, WWCP_Core, the overlay network, WWCP_OCPP v1.6 and v2.1, the
+      # ISO 15118 EXI codec and V2GTP, ChargyCore, DatexII and OpenADR, all
+      # against each other at the versions pinned here.
       #
       # Three categories left out, and they are somebody else's decision rather
       # than ours: Hermod marks its live DNS probes "LiveDNS", Norn marks its
