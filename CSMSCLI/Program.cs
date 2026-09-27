@@ -145,7 +145,7 @@ namespace cloud.charging.open.CSMS.CLI
                                 : "on";
 
                     Console.WriteLine($"    {entry.Id}  {state,-13}  until {entry.NotAfter.UtcDateTime:yyyy-MM-dd}  " +
-                                      $"{entry.Label}{(kind.HasUsages() ? $"  ({CertificateUsages.Describe(entry.Usages)})" : "")}");
+                                      $"{entry.Label}{(csms.Certificates.HasUsages(kind) ? $"  ({CertificateUsages.Describe(entry.Usages)})" : "")}");
 
                 }
 
