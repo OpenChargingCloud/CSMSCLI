@@ -272,6 +272,12 @@ __pycache__/
 # this particular installation, not of the source.
 configuration.json
 
+# What each server this CSMS connects to was last believed with: the
+# fingerprints of its certificate and its root, written beside the
+# configuration so that a change of certificate is noticed across a restart.
+# A record of what this machine saw, like the log, and not of the source.
+known-servers.json
+
 # Written beside that file by the charging station server, and a property of
 # this installation rather than of the source: its own keys, private keys
 # included; the certificates it trusts charging stations by; and the charging
@@ -285,6 +291,12 @@ configuration.json
 /ocpp-server-keys/
 /ocpp-client-trust/
 /ocpp-stations.json
+
+# The certificate store of the node below the CSMS, beside the same file and
+# for the same reasons: whatever is imported into it arrives with its private
+# key. Written at every start, so that without this every build after the
+# first start would be stamped dirty. Anchored like the accounts.
+/certificates/
 
 # What the OCPI library keeps: the partners this operator is peered with and
 # what they pushed, in append-only files of its own, one set per version.
