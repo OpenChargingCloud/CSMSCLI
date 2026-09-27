@@ -24,6 +24,7 @@ using cloud.charging.open.CSMS.CommandLine;
 using cloud.charging.open.CSMS.Web;
 
 using cloud.charging.open.protocols.WWCP.Node;
+using cloud.charging.open.protocols.WWCP.Node.Certificates;
 using cloud.charging.open.protocols.WWCP.Node.Configuration;
 using cloud.charging.open.protocols.WWCP.Node.Logging;
 
@@ -98,6 +99,64 @@ namespace cloud.charging.open.CSMS.CLI
 
         #endregion
 
+        #region (private static) ListCertificates(CSMS)
+
+        /// <summary>
+        /// What is in this CSMS's certificate store, as a table.
+        /// </summary>
+        /// <remarks>
+        /// Printed and not returned: this is what <c>--list-certificates</c>
+        /// exists for - what the store holds, whether each one is switched on,
+        /// until when, and what a root or a server certificate is kept for,
+        /// for somebody at a console rather than on the Certificate store page.
+        /// </remarks>
+        private static void ListCertificates(CSMSNode csms)
+        {
+
+            Console.WriteLine();
+            Console.WriteLine($"  Certificates in {csms.Certificates.Directory}");
+            Console.WriteLine();
+
+            var entries = csms.Certificates.Entries;
+
+            if (entries.Count == 0)
+            {
+                Console.WriteLine("  (empty - put one there with --import-certificate <kind>=<file>)");
+                Console.WriteLine();
+                return;
+            }
+
+            foreach (var kind in csms.Certificates.Kinds)
+            {
+
+                var ofKind = entries.Where(entry => entry.Kind == kind).ToArray();
+
+                if (ofKind.Length == 0)
+                    continue;
+
+                Console.WriteLine($"  {kind.Describe()}");
+
+                foreach (var entry in ofKind)
+                {
+
+                    var state = !entry.IsActive       ? "off"
+                                : entry.IsExpired     ? "EXPIRED"
+                                : entry.IsNotYetValid ? "not yet valid"
+                                : "on";
+
+                    Console.WriteLine($"    {entry.Id}  {state,-13}  until {entry.NotAfter.UtcDateTime:yyyy-MM-dd}  " +
+                                      $"{entry.Label}{(kind.HasUsages() ? $"  ({CertificateUsages.Describe(entry.Usages)})" : "")}");
+
+                }
+
+                Console.WriteLine();
+
+            }
+
+        }
+
+        #endregion
+
         #region (private static) WhatToDoAbout(Problem)
 
         /// <summary>
@@ -125,6 +184,8 @@ namespace cloud.charging.open.CSMS.CLI
             Console.WriteLine("               [--config <file>] [--accounts <directory>]");
             Console.WriteLine("               [--verbose | --quiet] [--no-trace]");
             Console.WriteLine("               [--log-file <dir>] [--no-log-file]");
+            Console.WriteLine("               [--certificates <dir>] [--import-certificate <kind>=<file>]");
+            Console.WriteLine("               [--certificate-password <pw>] [--list-certificates]");
             Console.WriteLine();
             Console.WriteLine("Web interface:");
             Console.WriteLine($"  --port <number>   TCP port to listen on (default: {CSMSNode.DefaultHTTPPort})");
@@ -147,6 +208,37 @@ namespace cloud.charging.open.CSMS.CLI
             Console.WriteLine("                    file the CSMS runs on the system defaults; the");
             Console.WriteLine("                    Configuration pages of the web interface write it, and every");
             Console.WriteLine("                    change there takes effect at once.");
+            Console.WriteLine();
+            Console.WriteLine("The certificate store. What this CSMS believes of the servers it asks, and the roots");
+            Console.WriteLine("of ISO 15118's PKI, one file per certificate, switched on and off one at a time:");
+            Console.WriteLine($"  --certificates <dir>      where the store is (default: {CertificatesConfiguration.DefaultDirectory}/ beside the");
+            Console.WriteLine("                    configuration file). Certificates already in that directory are");
+            Console.WriteLine("                    read again at every start, so copying one in is a way to install");
+            Console.WriteLine("                    it. The Certificate store page manages the same store");
+            Console.WriteLine("  --import-certificate <kind>=<file>");
+            Console.WriteLine("                    copy a certificate into the store, as PEM, DER or PKCS#12. A root");
+            Console.WriteLine("                    is a certificate on its own; a tlsIdentity has to bring its private");
+            Console.WriteLine("                    key, so a PEM for one carries the key beside it. May be given");
+            Console.WriteLine("                    several times. <kind> is one of:");
+            Console.WriteLine("                      v2gRoot    what a station's certificate must chain to");
+            Console.WriteLine("                      moRoot     what a contract certificate must chain to");
+            Console.WriteLine("                      oemRoot    what an OEM provisioning certificate must chain to");
+            Console.WriteLine("                      tlsRoot    what a time server or a name server over TLS may chain to");
+            Console.WriteLine("                      tlsServer  a server's own certificate, to hold it to by fingerprint");
+            Console.WriteLine("                      clientRoot, tlsIdentity  kept, and used by nothing here yet");
+            Console.WriteLine("                    The three ISO 15118 roots are kept for what is to come: nothing in");
+            Console.WriteLine("                    this CSMS checks a chain against them yet. A tlsRoot or a tlsServer");
+            Console.WriteLine("                    goes in for every use; the Certificate store page says what it is");
+            Console.WriteLine("                    for - the time servers, the name servers. A root is believed as");
+            Console.WriteLine("                    soon as it is in. Not in this store: the charging station server's");
+            Console.WriteLine("                    own certificate and the chains it accepts, which have pages of");
+            Console.WriteLine("                    their own");
+            Console.WriteLine("  --certificate-password <pw>");
+            Console.WriteLine("                    what opens a protected PKCS#12 being imported. Used once and not");
+            Console.WriteLine("                    kept: the store holds what it has without a password. A password");
+            Console.WriteLine("                    given here stands in the process list for every other user of the");
+            Console.WriteLine("                    machine, so prefer the environment: CSMS_CERT_PASSWORD");
+            Console.WriteLine("  --list-certificates       print the store, with the handle of each certificate");
             Console.WriteLine();
             Console.WriteLine("Log:");
             Console.WriteLine("  -v, --verbose     write every entry to the console, down to the debug ones");
@@ -187,6 +279,10 @@ namespace cloud.charging.open.CSMS.CLI
             var      verbose         = false;
             var      quiet           = false;
             var      noTrace         = false;
+            String?  certificatesDir   = null;
+            String?  certPassword      = null;
+            var      listCertificates  = false;
+            var      imports           = new List<(CertificateKind Kind, String File)>();
 
             for (var i = 0; i < Arguments.Length; i++)
             {
@@ -259,6 +355,60 @@ namespace cloud.charging.open.CSMS.CLI
                     case "--no-trace":
                         noTrace = true;
                         break;
+
+                    case "--certificates":
+                        if (!TryTakeValue(Arguments, ref i, out certificatesDir))
+                        {
+                            Console.Error.WriteLine("Missing directory after --certificates!");
+                            return 2;
+                        }
+                        break;
+
+                    case "--certificate-password":
+                        if (!TryTakeValue(Arguments, ref i, out certPassword))
+                        {
+                            Console.Error.WriteLine("Missing password after --certificate-password!");
+                            return 2;
+                        }
+                        break;
+
+                    case "--list-certificates":
+                        listCertificates = true;
+                        break;
+
+                    case "--import-certificate":
+                    {
+
+                        if (!TryTakeValue(Arguments, ref i, out var import) || import is null)
+                        {
+                            Console.Error.WriteLine("Missing <kind>=<file> after --import-certificate!");
+                            return 2;
+                        }
+
+                        // Split at the FIRST '=' only: everything after it is
+                        // the path, and a Windows path is full of things that
+                        // are not separators.
+                        var split = import.IndexOf('=');
+
+                        if (split < 1 || split == import.Length - 1)
+                        {
+                            Console.Error.WriteLine($"--import-certificate wants <kind>=<file>, and '{import}' is not that.");
+                            return 2;
+                        }
+
+                        if (!CertificateKindExtensions.TryParseKind(import[..split], out var importKind) ||
+                            !CSMSNode.CertificateKinds.Contains(importKind))
+                        {
+                            Console.Error.WriteLine($"'{import[..split]}' is not a kind of certificate this CSMS keeps. " +
+                                                    $"Use one of {String.Join(", ", CSMSNode.CertificateKinds.Select(one => one.AsText()))}.");
+                            return 2;
+                        }
+
+                        imports.Add((importKind, import[(split + 1)..]));
+
+                        break;
+
+                    }
 
                     case "-h":
                     case "--help":
@@ -338,6 +488,14 @@ namespace cloud.charging.open.CSMS.CLI
                                                          ? null
                                                          : logPath ?? Path.Combine(RepositoryRoot(), CSMSNode.DefaultLogPath),
 
+                           // Measured from where the CSMS is started, as every
+                           // other path on this command line is. Handed on
+                           // relative, it would be measured from the
+                           // configuration file.
+                           CertificatesPath:         certificatesDir is not null
+                                                         ? Path.GetFullPath(certificatesDir)
+                                                         : null,
+
                            BridgeDebugLog:           !noTrace
 
                        );
@@ -358,6 +516,53 @@ namespace cloud.charging.open.CSMS.CLI
 
             await using (csms)
             {
+
+                #region What the switches said about certificates
+
+                // Before the start, so that a root imported here is believed by
+                // the first key exchange with a time server, and not only by the
+                // one after it.
+                foreach (var (kind, file) in imports)
+                {
+
+                    if (!File.Exists(file))
+                    {
+                        Console.Error.WriteLine($"--import-certificate: there is no file '{file}'.");
+                        return 2;
+                    }
+
+                    Byte[] content;
+
+                    try
+                    {
+                        content = await File.ReadAllBytesAsync(file);
+                    }
+                    catch (Exception problem)
+                    {
+                        Console.Error.WriteLine($"--import-certificate: '{file}' could not be read: {problem.Message}");
+                        return 2;
+                    }
+
+                    if (!csms.Certificates.Import(content,
+                                                  kind,
+                                                  certPassword ?? Environment.GetEnvironmentVariable("CSMS_CERT_PASSWORD"),
+                                                  Label: null,
+                                                  out var imported,
+                                                  out var problem2))
+                    {
+                        Console.Error.WriteLine($"--import-certificate: {file} could not be imported as " +
+                                                $"{kind.AsText()}: {problem2}");
+                        return 2;
+                    }
+
+                    Console.WriteLine($"  imported       {imported.Label} as {kind.AsText()}, handle {imported.Id}");
+
+                }
+
+                if (listCertificates)
+                    ListCertificates(csms);
+
+                #endregion
 
                 try
                 {

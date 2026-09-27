@@ -73,7 +73,9 @@ sign-in cover several components that share a server.
 
 `dotnet run --project CSMSCLI -- --help` lists the rest: `--port`, `--any`,
 `--accounts <dir>`, `--frontend <dir>`, `--config <file>`, `--verbose`,
-`--quiet`, `--no-trace`, `--log-file <dir>`, `--no-log-file`.
+`--quiet`, `--no-trace`, `--log-file <dir>`, `--no-log-file`, and the
+certificate store's `--certificates <dir>`, `--import-certificate
+<kind>=<file>`, `--certificate-password <pw>` and `--list-certificates`.
 
 Everything that happens is written three times over, because the three answer
 different questions. The **console** shows what is going on to whoever is
@@ -85,6 +87,35 @@ last night - `--log-file <dir>` puts it elsewhere, `--no-log-file` leaves it
 out, and nothing in it is ever deleted. A disk that cannot take the file is
 said once on stderr rather than with every entry; once it can, the file begins
 again with a line saying how many entries are missing from it and since when.
+
+
+### Certificates
+
+What this CSMS believes of the servers it asks - the time servers, and the name
+servers over TLS or HTTPS - and the roots of ISO 15118's PKI live in one store,
+`certificates/` beside the configuration file, so beside the solution unless
+`--config` says otherwise. The **Certificate store** page manages it, and so
+does the command line:
+
+```
+dotnet run --project CSMSCLI -- --import-certificate tlsRoot=our-time-servers-root.pem --list-certificates
+```
+
+Importing a root makes it believed - for every use, until the page says what it
+is for. `--list-certificates` prints every certificate with its handle, and
+`--certificates <dir>` points the CSMS at another store, measured from where it
+is started. PEM, DER and PKCS#12 all go in. A password for an import is read
+from `CSMS_CERT_PASSWORD` where `--certificate-password` is not given, because
+a password given as a switch stands in the process list for every other user of
+the machine; and **the private keys in the store are not encrypted** - a
+PKCS#12 is opened with its password once, at import, and written back without
+one. Only a `systemadmin` changes the store; the viewer and the CPO may look at
+it.
+
+The keys the charging station server presents and the chains it lets stations
+in by are not in this store: they are that server's, with pages of their own.
+Which kinds a CSMS keeps, and what each is for, is in
+[CSMS](https://github.com/OpenChargingCloud/CSMS#certificates-and-where-they-live).
 
 
 ### Typing at it
