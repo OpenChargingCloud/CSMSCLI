@@ -76,6 +76,7 @@
     <Project Path="libs/WWCP_Core/WWCP_OverlayNetworking_Tests/WWCP_OverlayNetworking_Tests.csproj" />
     <Project Path="libs/WWCP_Node/WWCP_Node/WWCP_Node.csproj" />
     <Project Path="libs/WWCP_Node/WWCP_Node_Tests/WWCP_Node_Tests.csproj" />
+    <Project Path="libs/WWCP_Node/WWCP_Node_TestKit/WWCP_Node_TestKit.csproj" />
   </Folder>
   <Folder Name="/Dependencies/Vanaheimr/">
     <Project Path="libs/Hermod/Hermod/Hermod.csproj" />
