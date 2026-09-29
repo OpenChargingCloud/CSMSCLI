@@ -125,9 +125,10 @@ name the stations know it by - rather than a place that only scrolls. `help`
 lists what can be typed, `quit` leaves, **Tab** completes and **↑** walks back
 through what was typed before.
 
-`syncNTS` is **Sync now** from the **NTS client** page: the same time servers
-asked, the same entries in the log, and afterwards the same result on the page
-as its last synchronisation. The one line that differs is the one saying who
+`syncNTS`, which every kind of node has from WWCP_Node's `NodeCLI`, is **Sync
+now** from the **NTS client** page: the same time servers asked, the same
+entries in the log, and afterwards the same result on the page as its last
+synchronisation. The one line that differs is the one saying who
 asked - the page names the account that pressed the button and tags it `web`,
 the prompt says it was the command line and tags it `cli`. Like the button, it
 asks and reports and leaves the clock alone. The console gets a line for each
@@ -192,8 +193,8 @@ where it was. Nothing is suppressed and nothing is held back to make that work.
 
 Where there is no terminal - from a script, under a service manager, in CI, or
 with the output going into a file or through `| tee` - there is no prompt and
-nothing to type at, and the CSMS runs until it is stopped exactly as it did
-before.
+nothing to type at, and the CSMS runs until Ctrl+C stops it, or the SIGTERM a
+service manager sends; either shuts it down as `quit` does.
 
 
 ### The OCPP 1.6 bench

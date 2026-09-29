@@ -19,9 +19,7 @@
 
 using System.Reflection;
 
-// Styx's command line under a name of its own: the namespace this program's
-// entry point lives in ends in "CLI" as well, and would be found first.
-using StyxCLI = org.GraphDefined.Vanaheimr.CLI.CLI;
+using cloud.charging.open.protocols.WWCP.Node.CommandLine;
 
 #endregion
 
@@ -32,21 +30,17 @@ namespace cloud.charging.open.CSMS.CommandLine
     /// The command line of a running CSMS.
     /// </summary>
     /// <remarks>
-    /// Everything a command needs is reachable from here, which is why every
-    /// command takes one of these: the CSMS itself, and through it its
-    /// configuration, its log and everything the JSON API can do. A command is
-    /// a second way of asking for the same thing as the web interface - never
-    /// an implementation of its own.
-    ///
-    /// Commands are not listed anywhere. The constructor asks Styx to walk this
-    /// assembly for anything that implements ICLICommand and can be built from
-    /// a CSMSCommandLine, so a new command is a new file and nothing else.
+    /// The node's command line, with the commands every node has - syncNTS
+    /// among them - and the console until 'quit', Ctrl+C or SIGTERM. What only
+    /// a CSMS can be told is a command built from a CSMSCommandLine in this
+    /// assembly, found as the node's are: a new command is a new file and
+    /// nothing else.
     ///
     /// Not the OCPP operator console in CLI/, which is kept beside this and out
     /// of the build: that one wants an OCPP 1.6 central system node this CSMS
     /// does not have.
     /// </remarks>
-    public class CSMSCommandLine : StyxCLI
+    public class CSMSCommandLine : NodeCLI
     {
 
         #region Properties
@@ -68,7 +62,7 @@ namespace cloud.charging.open.CSMS.CommandLine
         public CSMSCommandLine(CSMS               CSMS,
                                params Assembly[]  AssembliesWithCLICommands)
 
-            : base(AssembliesWithCLICommands)
+            : base(CSMS, AssembliesWithCLICommands)
 
         {
 
