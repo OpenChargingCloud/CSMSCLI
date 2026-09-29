@@ -76,6 +76,8 @@ sign-in cover several components that share a server.
 `--quiet`, `--no-trace`, `--log-file <dir>`, `--no-log-file`, and the
 certificate store's `--certificates <dir>`, `--import-certificate
 <kind>=<file>`, `--certificate-password <pw>` and `--list-certificates`.
+They are every node's switches, read by WWCP_Node, as is what the console
+says once the CSMS is up.
 
 Everything that happens is written three times over, because the three answer
 different questions. The **console** shows what is going on to whoever is
