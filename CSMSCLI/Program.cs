@@ -38,9 +38,9 @@ namespace cloud.charging.open.CSMS.CLI
     /// What every kind of node's program does is the node's: the switches and
     /// the words -h explains them with, why it could not be set up or could not
     /// start, what goes into the certificate store, the banner and the prompt.
-    /// What is left here is the CSMS's: what its configuration holds, its
-    /// charging station server's port, and what its banner says of OCPP and
-    /// OCPI.
+    /// What is left here is the CSMS's: what its configuration holds, what of
+    /// its certificate store it does not use yet, its charging station server's
+    /// port, and what its banner says of OCPP and OCPI.
     /// </remarks>
     public class Program
     {
@@ -62,7 +62,11 @@ namespace cloud.charging.open.CSMS.CLI
                                 "below the repository root). Without the file the CSMS runs on the system defaults; the " +
                                 "Configuration pages of the web interface write it, and every change there takes effect at once.",
 
-            CertificateKinds:   CSMSNode.CertificateKinds
+            CertificateKinds:   CSMSNode.CertificateKinds,
+
+            CertificatesSays:   "v2gRoot, moRoot, oemRoot and tlsIdentity are kept, and used by nothing in this CSMS yet; the " +
+                                "charging station server's own certificate and the chains it accepts are not in this store, but " +
+                                "on pages of their own."
 
         );
 
