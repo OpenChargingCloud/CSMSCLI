@@ -157,8 +157,10 @@ namespace cloud.charging.open.CSMS.CLI
                                                                     : "switched off - no charging station can connect"),
                                              ("OCPI operator",  $"{csms.PartyIdText} '{csms.BusinessDetails.Name}', " +
                                                                 $"speaking {String.Join(", ", csms.OCPIVersions.Select(version => version.Label))}"),
-                                             ("partners",       $"{csms.OCPIVersionsURL} - {csms.RemotePartyCount} partner(s), " +
-                                                                $"{csms.LocationCount} location(s)")
+                                             // The address and the counts on lines of their own: on one, a
+                                             // five-digit port made it 82 columns wide.
+                                             ("partners",       $"{csms.OCPIVersionsURL}\n" +
+                                                                $"{csms.RemotePartyCount} partner(s), {csms.LocationCount} location(s)")
                                          ]))
                     Console.WriteLine(line);
 
