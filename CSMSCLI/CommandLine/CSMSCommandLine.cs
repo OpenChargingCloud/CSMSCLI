@@ -19,6 +19,8 @@
 
 using System.Reflection;
 
+using org.GraphDefined.Vanaheimr.CLI;
+
 using cloud.charging.open.protocols.WWCP.Node.CommandLine;
 
 #endregion
@@ -63,6 +65,29 @@ namespace cloud.charging.open.CSMS.CommandLine
                                params Assembly[]  AssembliesWithCLICommands)
 
             : base(CSMS, AssembliesWithCLICommands)
+
+        {
+
+            this.CSMS = CSMS;
+
+            RegisterCLIType(typeof(CSMSCommandLine));
+
+        }
+
+        /// <summary>
+        /// Create the command line of the given CSMS on the given terminal,
+        /// for the given caller - a session over SSH.
+        /// </summary>
+        /// <param name="CSMS">The running CSMS.</param>
+        /// <param name="Terminal">What the command line is typed at and written on.</param>
+        /// <param name="Caller">Who is typing at it.</param>
+        /// <param name="AssembliesWithCLICommands">Further assemblies to search for commands. This one and the node's are searched either way.</param>
+        public CSMSCommandLine(CSMS               CSMS,
+                               ICLITerminal       Terminal,
+                               CLICaller          Caller,
+                               params Assembly[]  AssembliesWithCLICommands)
+
+            : base(CSMS, Terminal, Caller, AssembliesWithCLICommands)
 
         {
 
