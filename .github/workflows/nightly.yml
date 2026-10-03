@@ -40,7 +40,12 @@ jobs:
   # ---------------------------------------------------------------------------
   schemas:
     runs-on: ubuntu-latest
+    container: debian:13
     steps:
+
+      # Debian 13 and these prerequisites for the reasons given in ci.yml.
+      - name: Install prerequisites
+        run: apt-get update && apt-get install -y --no-install-recommends ca-certificates curl git unzip && git config --global --add safe.directory '*'
 
       - uses: actions/checkout@v7
 

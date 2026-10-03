@@ -37,7 +37,19 @@ jobs:
   # ---------------------------------------------------------------------------
   schemas:
     runs-on: ubuntu-latest
+    container: debian:13
     steps:
+
+      # Debian 13 like the test legs. Not because downloading cares, but so
+      # that every Linux job here runs on the Linux this stack is deployed on,
+      # and a change of GitHub's Ubuntu image (ubuntu-latest moves to 26.04 in
+      # October 2026) changes nothing but the kernel underneath. The bare image
+      # brings none of what this job uses: git, without which checkout falls
+      # back to a tarball and `git submodule` has no repository to work in;
+      # curl and ca-certificates for ISO's server; unzip for Amendment 1,
+      # which arrives as a zip archive. tar and gzip are in the base image.
+      - name: Install prerequisites
+        run: apt-get update && apt-get install -y --no-install-recommends ca-certificates curl git unzip && git config --global --add safe.directory '*'
 
       - uses: actions/checkout@v7
 
