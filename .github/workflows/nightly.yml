@@ -148,6 +148,7 @@ jobs:
           tmp="$(mktemp -d)"
           dotnet CSMSCLI/bin/Release/net10.0/CSMSCLI.dll \
               --port      18125 \
+              --ssh-port  22125 \
               --accounts  "$tmp/accounts" \
               --config    "$tmp/configuration.json" \
               > "$tmp/console.log" 2>&1 &
@@ -168,6 +169,21 @@ jobs:
           api="$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:18125/api/v1/status 2>/dev/null || true)"
           api="${api:-000}"
 
+          # The SSH server a node starts beside the web interface, on a port of
+          # its own below 32768. Without --ssh-port it would be the web port
+          # plus 20000, 38125 - in the range Linux hands outgoing connections
+          # their ports from, free here only by chance, and taken in EMSPCLI's
+          # Debian container once (cb2a299). Asked while it runs, as the rest.
+          ssh_banner=""
+          for _ in $(seq 1 10); do
+              ssh_banner="$(timeout 5 bash -c 'exec 3<>/dev/tcp/127.0.0.1/22125 && head -n 1 <&3' 2>/dev/null | tr -d '\r' || true)"
+              case "$ssh_banner" in
+                  SSH-2.0-*) break ;;
+              esac
+              kill -0 "$pid" 2>/dev/null || break
+              sleep 1
+          done
+
           running=0
           kill -0 "$pid" 2>/dev/null && running=1
 
@@ -176,6 +192,7 @@ jobs:
 
           echo "GET /                -> $root"
           echo "GET /api/v1/status   -> $api"
+          echo "SSH 22125            -> ${ssh_banner:-nothing}"
 
           # What the banner says this was built from - in every run, not only a
           # red one, because a stamp that reads "unknown" or "-dirty" is worth
@@ -194,6 +211,10 @@ jobs:
               echo "The JSON API answered $api where 401 was expected: it is supposed to be shut to anyone not signed in."
               fault=1
           fi
+          case "$ssh_banner" in
+              SSH-2.0-*) ;;
+              *) echo "The SSH server did not answer on 22125."; fault=1 ;;
+          esac
 
           if [ "$fault" != 0 ]; then
               echo
