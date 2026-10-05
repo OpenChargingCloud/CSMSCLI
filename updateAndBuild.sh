@@ -15,6 +15,10 @@ set -e
 
 cd "$(dirname "$0")"
 
+git pull --ff-only
+git submodule update --init --recursive
+git submodule foreach git checkout master
 git submodule foreach git pull
-git pull
+npm --prefix /home/ahzf/CSMSCLI/libs/CSMS/CSMS/Frontend ci
+#dotnet build CSMSCLI.slnx --configuration Release
 dotnet build CSMSCLI.slnx

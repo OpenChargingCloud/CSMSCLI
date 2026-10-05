@@ -311,6 +311,13 @@ known-servers.json
 # somebody puts something else in there.
 /logs/
 
+# Its SSH host key, the private half of who this vehicle is to every SSH
+# client: made at the first start with the SSH server on, and kept beside the
+# configuration file. Whoever has it can pose as this vehicle to anybody who
+# trusted it once - more to lose than the certificate store, and anchored the
+# same way. The public keys allowed to sign in live below /accounts/ already.
+/ssh/
+
 # The sign-in this CSMS was given before it had an accounts directory: one
 # user and a PBKDF2 hash of their password, in a file nothing reads any more.
 # Ignored rather than deleted - it is somebody's credential, and throwing away
