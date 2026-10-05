@@ -68,6 +68,17 @@ At the first start there are no accounts, so the CSMS makes one up for the user
 password once - below what went wrong, too, if that start then fails, at a port
 something else holds, say. Then open http://127.0.0.1:2351/ and sign in.
 
+**Recommended for the first start: give `root` your own SSH key** with it, so
+that you can type at the CSMS over SSH from the start - see
+[Typing at it over SSH](#typing-at-it-over-ssh):
+
+```
+dotnet run --project CSMSCLI -- --authorize-ssh-key root=C:\Users\you\.ssh\id_ed25519.pub
+```
+
+Without it, the first start makes up a key pair for `root` and prints its
+private key once, below the password.
+
 Those accounts are the same kind Hermod's HTTPExt API keeps for every other
 component here, with this CSMS's roles as groups in them, which is what lets one
 sign-in cover several components that share a server.
@@ -209,16 +220,39 @@ machine, no files, no tunnels. `--ssh-port` moves it, `--no-ssh` switches it
 off.
 
 Whoever signs in is an account of the CSMS, under its name, with a key of its
-own. The first start makes `root`; give it your public key once:
+own. The first start makes `root`; give it your public key with that very
+start - the way recommended:
 
 ```
 dotnet run --project CSMSCLI -- --authorize-ssh-key root=C:\Users\you\.ssh\id_ed25519.pub
 ```
 
+The private key then stays on your machine, and no console ever shows it.
+A first start without `--authorize-ssh-key root=...` makes up a key pair for
+`root` instead and prints its private key once, below the password in the
+first-start box: save the lines from `-----BEGIN OPENSSH PRIVATE KEY-----` to
+the END line as a file only you can read, and sign in with
+`ssh -i <file> -p 22351 root@127.0.0.1`, or import the file in PuTTYgen for
+PuTTY. Like the password it is kept nowhere - but a console may be kept, by a
+service's journal or a redirected output; replace it with your own key and
+take it out. `--authorize-ssh-key` also works at any later start.
+
 An OpenSSH `.pub` goes in as it is, and so does what PuTTYgen saves with *Save
-public key*. The key is kept in `accounts/ssh/root`, a file in the format of
-`authorized_keys`, and putting a line into it by hand does the same; taking one
-out locks that key out at once. Then:
+public key*. The key is kept with the account, beside its password, and the
+`sshKeys` command manages it - at the console, or over SSH for the account
+signed in:
+
+```
+sshKeys root
+sshKeys root add ssh-ed25519 AAAA... you@laptop
+sshKeys root remove SHA256:abc
+```
+
+`remove` takes the fingerprint `sshKeys` lists, or enough of its beginning, and
+locks that key out at once. `apiKeys` does the same for the account's API keys,
+and shows a new one once, when it is made. A file `accounts/ssh/<account>` from
+an older version is taken over at the next start and renamed to
+`<account>.imported`; it is not read after that. Then:
 
 ```
 ssh -p 22351 root@127.0.0.1
