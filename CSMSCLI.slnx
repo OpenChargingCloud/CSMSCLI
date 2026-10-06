@@ -77,6 +77,8 @@
     <Project Path="libs/WWCP_Node/WWCP_Node/WWCP_Node.csproj" />
     <Project Path="libs/WWCP_Node/WWCP_Node_Tests/WWCP_Node_Tests.csproj" />
     <Project Path="libs/WWCP_Node/WWCP_Node_TestKit/WWCP_Node_TestKit.csproj" />
+    <Project Path="libs/WWCP_POI/WWCP_POI/WWCP_POI.csproj" Id="4fff00b1-b534-4ae4-a6f6-45ed8fc7361e" />
+    <Project Path="libs/WWCP_POI/WWCP_POI_Tests/WWCP_POI_Tests.csproj" Id="1d4afb52-348e-4508-a5df-5688495622d7" />
   </Folder>
   <Folder Name="/Dependencies/Vanaheimr/">
     <Project Path="libs/Hermod/Hermod/Hermod.csproj" />

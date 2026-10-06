@@ -40,3 +40,6 @@
 [submodule "libs/Urdr"]
 	path = libs/Urdr
 	url = https://github.com/Vanaheimr/Urdr.git
+[submodule "libs/WWCP_POI"]
+	path = libs/WWCP_POI
+	url = https://github.com/OpenChargingCloud/WWCP_POI.git
