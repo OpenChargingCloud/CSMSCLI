@@ -78,6 +78,10 @@
     <Project Path="libs/WWCP_Node/WWCP_Node_Tests/WWCP_Node_Tests.csproj" />
     <Project Path="libs/WWCP_Node/WWCP_Node_TestKit/WWCP_Node_TestKit.csproj" />
     <Project Path="libs/WWCP_POI/WWCP_POI/WWCP_POI.csproj" Id="4fff00b1-b534-4ae4-a6f6-45ed8fc7361e" />
+    <Project Path="libs/WWCP_POI/WWCP_POI2/WWCP_POI2.csproj" Id="f81e1931-4ede-4fa4-ad70-5fc84afd1b93" />
+    <Project Path="libs/WWCP_POI/WWCP_POI2_Tests/WWCP_POI2_Tests.csproj" Id="b7d9a657-8cec-498b-8fa8-31be9abcc375" />
+    <Project Path="libs/WWCP_POI/WWCP_POI3/WWCP_POI3.csproj" Id="4c0bc809-e696-4fff-b7e6-4a1fd454e7c6" />
+    <Project Path="libs/WWCP_POI/WWCP_POI3_Tests/WWCP_POI3_Tests.csproj" Id="7edd0cc2-64b9-46a5-851b-dd456be3a8f0" />
     <Project Path="libs/WWCP_POI/WWCP_POI_Tests/WWCP_POI_Tests.csproj" Id="1d4afb52-348e-4508-a5df-5688495622d7" />
   </Folder>
   <Folder Name="/Dependencies/Vanaheimr/">
