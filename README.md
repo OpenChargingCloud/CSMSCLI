@@ -85,11 +85,36 @@ sign-in cover several components that share a server.
 
 `dotnet run --project CSMSCLI -- --help` lists the rest: `--port`, `--any`,
 `--accounts <dir>`, `--frontend <dir>`, `--config <file>`, `--verbose`,
-`--quiet`, `--no-trace`, `--log-file <dir>`, `--no-log-file`, and the
+`--quiet`, `--no-trace`, `--log-file <dir>`, `--no-log-file`, the
 certificate store's `--certificates <dir>`, `--import-certificate
-<kind>=<file>`, `--certificate-password <pw>` and `--list-certificates`.
-They are every node's switches, read by WWCP_Node, as is what the console
-says once the CSMS is up.
+<kind>=<file>`, `--certificate-password <pw>` and `--list-certificates`, and
+HTTPS's `--https`, `--https-cert <file>`, `--https-key <file>`,
+`--redirect-port <number>` and `--trusted-proxy <address>`. They are every
+node's switches, read by WWCP_Node, as is what the console says once the CSMS
+is up.
+
+**`--any` puts the sign-in on the network**, and with it the password, the API
+keys and the session cookie - in the clear, unless the CSMS speaks HTTPS itself
+or a proxy in front of it does and is named as trusted, both also in the `web`
+section of the configuration file. Behind nginx:
+
+```json
+"web": { "trustedProxies": [ "127.0.0.1", "::1" ] }
+```
+
+With certbot's files and no proxy:
+
+```json
+"web": { "tls": { "certificate": { "fullchain": "/etc/letsencrypt/live/csms.example.org/fullchain.pem",
+                                   "privateKey": "/etc/letsencrypt/live/csms.example.org/privkey.pem" },
+                  "redirectPort": 80 } }
+```
+
+Neither said, the CSMS warns in its log, below its banner and above every page
+of its web interface to its administrators. What is said on the command line
+wins over the file; WWCP_Node's README says the rest. The stations' OCPP port is
+another listener, whose TLS the `ocppServer` section's security profiles and
+the certificate store decide.
 
 Everything that happens is written three times over, because the three answer
 different questions. The **console** shows what is going on to whoever is
