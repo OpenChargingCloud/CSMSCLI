@@ -275,7 +275,9 @@ sshKeys root remove SHA256:abc
 
 `remove` takes the fingerprint `sshKeys` lists, or enough of its beginning, and
 locks that key out at once. `apiKeys` does the same for the account's API keys,
-and shows a new one once, when it is made. Then:
+and shows a new one once, when it is made: the CSMS keeps no more of a key than
+its hash, and names it by its first six characters and the beginning of that
+hash (`alices... #41WyMKor`), which `remove` takes too. Then:
 
 ```
 ssh -p 22351 root@127.0.0.1
@@ -293,7 +295,9 @@ do on the web interface, and the log names it: "'root' at the command line over
 SSH asked this CSMS to synchronise its time.", tagged `cli` and `ssh`. And the
 session's log starts at the console's level and is its own: `log debug` shows
 everything here, `log off` nothing, for this session alone. `who` says who else
-is signed in.
+is signed in. A session ends once what let it in no longer does - the account
+switched off or without a role, the key it came with taken out or switched off:
+"Signed out: ..." on the terminal, before the next command or within seconds.
 
 
 ### The OCPP 1.6 bench
