@@ -20,6 +20,7 @@
 using cloud.charging.open.protocols.WWCP.Node;
 using cloud.charging.open.protocols.WWCP.Node.CommandLine;
 using cloud.charging.open.protocols.WWCP.Node.Configuration;
+using cloud.charging.open.protocols.OCPP.SSH;
 
 using cloud.charging.open.CSMS.CommandLine;
 
@@ -87,6 +88,37 @@ namespace cloud.charging.open.CSMS.CLI
                      "charging station server another port: \"port\" in the \"ocppServer\" section of the configuration file."
 
                    : null;
+
+        #endregion
+
+        #region (private static) OverSSH(CSMS)
+
+        /// <summary>
+        /// Where the charging stations connect over SSH, as more lines of the
+        /// station server's: the URL on a line of its own, then the subsystem
+        /// and how many of them have a key - the host key they pin is the SSH
+        /// server's, shown above. Nothing where OCPP over SSH is switched off.
+        /// </summary>
+        /// <remarks>
+        /// The URL apart, as the partners' is: with the subsystem beside it,
+        /// even "ssh://127.0.0.1:22351" made the line 93 columns wide - and
+        /// the banner breaks no line of a kind's. So is the sentence for an
+        /// SSH server that is off, which was 116.
+        /// </remarks>
+        private static String OverSSH(CSMSNode CSMS)
+        {
+
+            if (!CSMS.OCPPOverSSHServed)
+                return "";
+
+            if (CSMS.OCPPServerSSHURL is not String url)
+                return "\nOCPP over SSH is switched on, but the SSH server is off:\nno charging station can connect over SSH";
+
+            var withAKey = CSMS.StationLogins.Logins.Count(login => login.Enabled && login.HasSSHKey);
+
+            return $"\n{url}\nsubsystem {OCPPSshServer.OCPPSubsystem}, {withAKey} with an SSH key";
+
+        }
 
         #endregion
 
@@ -159,7 +191,8 @@ namespace cloud.charging.open.CSMS.CLI
                                              ("OCPP node",      $"{csms.Node.Id} ({csms.Node.VendorName} {csms.Node.Model})"),
                                              ("stations",       csms.OCPPServerEnabled
                                                                     ? $"{csms.OCPPServerURL}{(csms.OCPPServerTLS ? "" : " (unencrypted)")}, " +
-                                                                      $"{csms.StationLogins.EnabledCount} login(s)"
+                                                                      $"{csms.StationLogins.EnabledCount} login(s)" +
+                                                                      OverSSH(csms)
                                                                     : "switched off - no charging station can connect"),
                                              ("OCPI operator",  $"{csms.PartyIdText} '{csms.BusinessDetails.Name}', " +
                                                                 $"speaking {String.Join(", ", csms.OCPIVersions.Select(version => version.Label))}"),

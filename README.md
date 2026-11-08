@@ -300,6 +300,43 @@ switched off or without a role, the key it came with taken out or switched off:
 "Signed out: ..." on the terminal, before the next command or within seconds.
 
 
+### Charging stations over SSH
+
+The charging stations may speak OCPP over the same SSH server, as the subsystem
+`ocpp@open.charging.cloud`, where `"ocppServer": { "ssh": { "enabled": true } }`
+in `configuration.json` or the switch on the **Charging stations** page says so.
+It is off unless somebody switches it on, and only served while the charging
+station server runs. The banner then has two more lines under `stations`, with
+where they connect; the host key they pin is the one under `SSH`:
+
+```
+  stations       ws://0.0.0.0:2352 (unencrypted), 1 login(s)
+                 ssh://127.0.0.1:22351
+                 subsystem ocpp@open.charging.cloud, 1 with an SSH key
+```
+
+The address is the SSH server's own - the loopback, unless `--any` - or the
+first name in `reachableAs`, where the stations are told one.
+
+Each station signs in under its identification with a key of its own, given
+under **Logins and groups** or with `stationKeys` - at the console, or over SSH
+by an account that may change the charging stations on the web interface:
+
+```
+stationKeys
+stationKeys CS001
+stationKeys CS001 add ssh-ed25519 AAAA... cs001
+stationKeys CS001 remove SHA256:abc
+```
+
+A station not listed yet is added by `add`, in the default group. `remove`
+takes the fingerprint `stationKeys` lists, or enough of its beginning, and
+ends the session that key opened at once. Where a key cannot let its station
+in - the station or its group switched off, a group that takes no SSH keys,
+OCPP over SSH switched off, no SSH server - the answer says so beside it. A
+station gets OCPP and nothing else: no command line, no command, no SFTP.
+
+
 ### The OCPP 1.6 bench
 
 The former command line - a test PKI built by hand and an OCPP 1.6 central
