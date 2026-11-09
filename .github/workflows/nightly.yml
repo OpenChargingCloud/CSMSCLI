@@ -130,9 +130,27 @@ jobs:
       # runner is not a normal client — datacentre egress on UDP/53 and UDP/123
       # is commonly blocked or rate-limited — so they would fail here for
       # reasons that say nothing about any of this code.
+      #
+      # --blame-hang: a test that has not finished after 15 minutes is a hang,
+      # not a slow test. Its test host is dumped (mini: thread stacks, a few MB
+      # on Windows, some 20-40 on Debian) and stopped, the step goes red and
+      # the console names the test, instead of waiting for the 120 minutes
+      # without a word. The TRX holds only the tests that finished; the hung
+      # one is in the blame's Sequence file, marked Completed="False". On
+      # 2026-10-26 Hermod's WebSocket load tests hung the Modbus/TLS meter's
+      # nightly for two hours in the same way (Hermod PR #158 bounds their
+      # waits).
+      #
+      # --blame-crash: a test host that dies is dumped as it dies (mini again),
+      # beside the Sequence file. On 2026-11-04 Hermod's test host died once in
+      # four full runs on a loaded Windows machine, during
+      # Generate_RSA_ServerCertificate_Direct_Test, with no stack and no reason
+      # after "crashed"; it did not come back alone or in the whole suite
+      # again. The test named is only the one that was running, so the next
+      # time the dump is all there is to go on.
       - name: Test everything, as pinned
         timeout-minutes: 120
-        run: dotnet test CSMSCLI.slnx --configuration Release --no-build --filter "TestCategory!=LiveDNS&TestCategory!=External&TestCategory!=LiveNetwork" --logger "console;verbosity=normal" --logger "trx;LogFileName=${{ matrix.leg }}.trx" --results-directory artifacts
+        run: dotnet test CSMSCLI.slnx --configuration Release --no-build --blame-hang --blame-hang-timeout 15m --blame-hang-dump-type mini --blame-crash --blame-crash-dump-type mini --filter "TestCategory!=LiveDNS&TestCategory!=External&TestCategory!=LiveNetwork" --logger "console;verbosity=normal" --logger "trx;LogFileName=${{ matrix.leg }}.trx" --results-directory artifacts
 
       # The same start as in ci.yml, for the same reason and on the same leg.
       # Repeating it costs a minute and catches the kind of failure that only
@@ -262,7 +280,13 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: test-results-${{ matrix.leg }}
-          path: artifacts/*.trx
+          # The blame's files sit one directory down, in a GUID-named one; vstest
+          # leaves copies of them further down still, which are left out.
+          path: |
+            artifacts/*.trx
+            artifacts/*/Sequence_*.xml
+            artifacts/*/*_hangdump.dmp
+            artifacts/*/*_crashdump.dmp
 
 
   # ---------------------------------------------------------------------------
@@ -352,11 +376,14 @@ jobs:
         continue-on-error: true
         run: dotnet build CSMSCLI.slnx --configuration Release
 
+      # --blame-hang and --blame-crash as in "Test everything, as pinned": a
+      # hang is named after 15 minutes, a crash as it happens. Nothing is
+      # uploaded from this job, so the name in the console is what is kept.
       - name: Test against the tips (informational)
         if: steps.build.outcome == 'success'
         continue-on-error: true
         timeout-minutes: 120
-        run: dotnet test CSMSCLI.slnx --configuration Release --no-build --filter "TestCategory!=LiveDNS&TestCategory!=External&TestCategory!=LiveNetwork" --logger "console;verbosity=normal"
+        run: dotnet test CSMSCLI.slnx --configuration Release --no-build --blame-hang --blame-hang-timeout 15m --blame-hang-dump-type mini --blame-crash --blame-crash-dump-type mini --filter "TestCategory!=LiveDNS&TestCategory!=External&TestCategory!=LiveNetwork" --logger "console;verbosity=normal"
 
       - name: Say how it went
         if: ${{ !cancelled() }}
