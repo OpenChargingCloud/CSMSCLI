@@ -225,6 +225,43 @@ ptbtime2.ptb.de answered, 360 ms altogether:
 Tab offers the CSMS's time servers as soon as the command is typed, and each Tab
 after that completes as far as the names agree.
 
+`stationSyncNTS` has a charging station that is connected do the same with its
+own time servers: SyncNetworkTime and TestTimeServer of the white paper
+[Secure Time Synchronization](https://github.com/OpenChargingTechnology/Whitepapers/tree/master/SecureTimeSync),
+sent over OCPP. With the station alone it is a round of its legal group, with a
+group's name after it a round of that group, and with an `@` the test of one
+time server, named by the instance of its `NTPClientController`. The station
+answers at once and tells what came of it afterwards, which is waited for, two
+minutes at most, and written in the lines of `syncNTS`, so that the two lie side
+by side when the time is right here and not there. Each server is named by its
+host and, in brackets, by the id that comes after the `@`:
+
+```
+csms001> stationSyncNTS cs001
+Asked of the charging station 'cs001', NTS group 'legal':
+succeeded after 312 ms: 1 of 2 server(s) answered (1 required), offset +1.2 ms, spread 0.0 ms
+  ptbtime1.ptb.de (ptb1)  +1.2 ms, round trip 18.7 ms, key exchange new
+  ptbtime2.ptb.de (ptb2)  No answer within 3 s.
+  legal time: no - Only one of two required servers is configured.
+
+csms001> stationSyncNTS cs001 @ptb2
+Asked of the charging station 'cs001':
+ptbtime2.ptb.de (ptb2) did not answer, 3096 ms altogether:
+     +0 ms  Asking ptbtime2.ptb.de.
+    +94 ms  The key exchange succeeded.
+  +3096 ms  error: No answer within 3 s.
+  failed at: TimeRequest
+```
+
+A round asked for this way is a round of the station's like any other, and its
+log says who asked; a test changes nothing the station's legal time rests on.
+Where the station asks nobody it says why, with the white paper's reason code -
+`'cs001' asked nobody: Rejected, UnknownGroup - ...`, or `Busy` while it is still
+at another one - and a station that is not connected is not asked. Tab offers the
+stations that are connected. It needs what `syncNTS` needs, and the white paper
+asks to spread such requests over time where there are many stations, because
+the legal time servers are everybody's.
+
 `queryDNS` is the DNS test of the web interface: a name looked up the way this
 CSMS looks up anything, cache included, or asked of one of its name servers
 alone and without the cache, named after an `@` by its id, its place in the
