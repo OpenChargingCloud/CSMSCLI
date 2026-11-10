@@ -225,6 +225,38 @@ ptbtime2.ptb.de answered, 360 ms altogether:
 Tab offers the CSMS's time servers as soon as the command is typed, and each Tab
 after that completes as far as the names agree.
 
+`queryDNS` is the DNS test of the web interface: a name looked up the way this
+CSMS looks up anything, cache included, or asked of one of its name servers
+alone and without the cache, named after an `@` by its id, its place in the
+list or its address. An address is asked for as its reverse name, record types
+go by mnemonic, by number or as `TYPE65`, and A and AAAA are asked unless others
+are named. The answer is all of it: the question, the RCODE by the IANA
+registry's name, the server it came from, the AA and TC bits and the DNSSEC
+status, every record in presentation format, and for a name server over TLS or
+HTTPS the verdict on its certificate.
+
+`stationQueryDNS` puts the same question to a charging station that is
+connected, to be answered with the station's name servers: QueryDNS of the white
+paper [Advanced Diagnostics for OCPP](https://github.com/OpenChargingTechnology/Whitepapers/tree/master/AdvancedDiagnostics#querydns),
+sent over OCPP. Without an `@` the station asks the way all of its services
+ask; with one, the name server of that `serverId` alone. What the station
+answers is written in the lines of `queryDNS`, so that the two lie side by side
+when a name resolves here and not there:
+
+```
+csms001> stationQueryDNS cs001 ntske1.cpo.example A AAAA @dns-1
+Asked of the charging station 'cs001':
+ntske1.cpo.example. A, AAAA @dns-1 -> NoError from udp://192.0.2.53:53 in 12 ms
+  ntske1.cpo.example.  A     300  192.0.2.123
+  ntske1.cpo.example.  AAAA  300  2001:db8::123
+```
+
+Where the station asks nobody it says why, with the white paper's reason code -
+`'cs001' asked nobody: Rejected, UnknownServer - ...` - and a station that is
+not connected is not asked. Tab offers the stations that are connected, then
+the record types. Both commands need what the DNS test of the web interface
+needs, and both are written to the log with who asked.
+
 The log keeps writing while you type, from whichever thread did the thing it is
 reporting, and your half-typed line survives it: the line is taken off the
 screen, the entry is written whole, and the line comes back with the cursor
