@@ -205,7 +205,7 @@ namespace cloud.charging.open.CSMS.CLI
 
                 // The node's: a prompt where somebody can type, and waiting
                 // where nobody can, with the log sharing the screen.
-                await new CSMSCommandLine(csms).RunUntilStopped();
+                await new CSMSCLI(csms).RunUntilStopped();
 
                 #endregion
 
