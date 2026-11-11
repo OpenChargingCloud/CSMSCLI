@@ -171,10 +171,6 @@ namespace cloud.charging.open.CSMS.CLI
             await using (csms)
             {
 
-                // What somebody signed in over SSH gets: this program's own command
-                // line, with its commands beside the node's.
-                csms.CommandLines = (terminal, caller) => new CSMSCommandLine(csms, terminal, caller);
-
                 if (csms.ImportCertificates(arguments, out _) is Int32 notImported)
                     return notImported;
 
