@@ -406,15 +406,49 @@ OCPP over SSH switched off, no SSH server - the answer says so beside it. A
 station gets OCPP and nothing else: no command line, no command, no SFTP.
 
 
+### Operating the charging stations
+
+`connections` lists the charging stations connected now: from where, how many
+WebSocket frames went each way and how long ago the last did - or that one is
+connected over SSH. `use` chooses one of them, and from then on the OCPP
+commands of the OCPP library go to it: `reset`, `remoteStart`, `remoteStop`,
+`changeAvailability`, `getBaseReport`, `getReport`, `triggerMessage`,
+`installCertificate`, `setChargingProfile`, `getLog` and the
+rest. Tab offers them once a station is chosen, and the prompt says which one is;
+`use -` chooses none again.
+
+```
+csms001> use cs001
+Using the charging station 'cs001': the OCPP commands go to it.
+csms001 [cs001]> reset immediate
+reset immediate => 34,5361 ms
+{
+  "status": "Accepted"
+}
+```
+
+They need what operating the stations needs - the `cpo` role or an
+administrator's - and are asked for it when they run, not only at `use`, so
+that a station set by hand with `setEnv` is not a way around it. A viewer may
+look at `connections`, and is told what it would need. What was sent, and to
+which station, is written to the log under who sent it; the command and not its
+arguments, which may carry a network profile's password.
+
+The library's own `queryDNS` is left out, for the node's: `stationQueryDNS` is
+the same question to a station. All of this - the commands, `use`,
+`connections` and the command line itself - is the CSMS library's, in
+`libs/CSMS/CSMS/CommandLine`, so a CSMS run by another program has it too.
+
+
 ### The OCPP 1.6 bench
 
 The former command line - a test PKI built by hand and an OCPP 1.6 central
 system beside an OCPP 2.1 CSMS on the ports 8820..8823, one per TLS variant -
-is kept as `libs/CSMS/CSMS/PKISetup.cs` and an interactive OCPP console under
-`CSMSCLI/CLI`. Both are excluded from the build; the project files say how to
-bring them back. The prompt above is not that console: it lives in
-`CSMSCLI/CommandLine` and speaks to this CSMS, where the old one wanted an OCPP
-1.6 central system beside it.
+is kept as `libs/CSMS/CSMS/PKISetup.cs`, excluded from the build; its project
+file says how to bring it back. Its interactive console, which wanted the OCPP
+1.6 central system beside the CSMS, is gone: what it could do with a CSMS of
+OCPP 2.1 - `use` and `connections`, and the OCPP library's commands behind them -
+is the command line above.
 
 
 ### Your participation
