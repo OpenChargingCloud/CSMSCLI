@@ -405,6 +405,11 @@ in - the station or its group switched off, a group that takes no SSH keys,
 OCPP over SSH switched off, no SSH server - the answer says so beside it. A
 station gets OCPP and nothing else: no command line, no command, no SFTP.
 
+The whole way from both ends, step by step, is written down for the local
+controller, whose steps a CSMS shares - its SSH port is 22351 where that page
+says 22350:
+[Charging stations over SSH: a walk-through](https://github.com/OpenChargingCloud/LocalControllerCLI/blob/master/docs/Charging-stations-over-SSH.md).
+
 
 ### Operating the charging stations
 
