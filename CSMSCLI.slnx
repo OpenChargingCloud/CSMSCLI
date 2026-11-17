@@ -41,6 +41,7 @@
   </Folder>
   <Folder Name="/Dependencies/OCPP/">
     <Project Path="libs/WWCP_OCPP/WWCP_OCPP_Common/WWCP_OCPP_Common.csproj" />
+    <Project Path="libs/WWCP_OCPP/WWCP_OCPP_Node/WWCP_OCPP_Node.csproj" />
   </Folder>
   <Folder Name="/Dependencies/OCPP/OCPPv1.6/">
     <Project Path="libs/WWCP_OCPP/WWCP_OCPPv1.6/WWCP_OCPPv1.6.csproj" />
