@@ -1,0 +1,46 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The CSMS against the real charging station and the real local controller:
+    the libraries of all three in one process, each started as its program
+    starts it, talking over the loopback interface - signing in, dialling and
+    being dialled. libs/CSMS tests the CSMS against the test nodes of
+    WWCP_OCPP; only here does it meet the nodes that are deployed, at the
+    commits of ChargingStation and LocalController pinned beside it.
+
+    The test helpers of the three are compiled in as links rather than
+    referenced, because their test projects are no libraries.
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net11.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>cloud.charging.open.Interop</RootNamespace>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.12.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+    <PackageReference Include="NUnit" Version="5.0.0" />
+    <PackageReference Include="NUnit3TestAdapter" Version="6.3.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\libs\CSMS\CSMS\CSMS.csproj" />
+    <ProjectReference Include="..\libs\ChargingStation\ChargingStation\ChargingStation.csproj" />
+    <ProjectReference Include="..\libs\LocalController\LocalController\LocalController.csproj" />
+    <ProjectReference Include="..\libs\WWCP_Node\WWCP_Node_TestKit\WWCP_Node_TestKit.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\libs\CSMS\CSMSTests\TestCSMSs.cs" Link="TestCSMSs.cs" />
+    <Compile Include="..\libs\ChargingStation\ChargingStationTests\TestStations.cs" Link="TestStations.cs" />
+    <Compile Include="..\libs\ChargingStation\ChargingStationTests\SlowTests.cs" Link="SlowTests.cs" />
+    <Compile Include="..\libs\ChargingStation\ChargingStationTests\Connections.GlobalUsings.cs" Link="Connections.GlobalUsings.cs" />
+    <Compile Include="..\libs\LocalController\LocalControllerTests\TestControllers.cs" Link="TestControllers.cs" />
+    <Compile Include="..\libs\LocalController\LocalControllerTests\TestCA.cs" Link="TestCA.cs" />
+  </ItemGroup>
+
+</Project>

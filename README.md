@@ -445,6 +445,24 @@ the same question to a station. All of this - the commands, `use`,
 `libs/CSMS/CSMS/CommandLine`, so a CSMS run by another program has it too.
 
 
+### Against the real station and the real local controller
+
+`libs/CSMS` tests the CSMS against the test nodes of WWCP_OCPP. Whether it
+gets along with the nodes that are actually deployed is asked in
+`InteropTests`: the real CSMS, the real charging station and the real local
+controller in one process, each started as its program starts it, over the
+loopback interface - a station signing in with a client certificate or a
+one-time password bound to its TLS session, the CSMS dialling a station and
+a local controller, and reaching a station behind the controller. Station
+and controller are submodules here for this alone, `libs/ChargingStation`
+and `libs/LocalController`, pinned like the libraries: a change on one side
+that the other does not follow turns this red.
+
+```
+dotnet test InteropTests/InteropTests.csproj
+```
+
+
 ### The OCPP 1.6 bench
 
 The former command line - a test PKI built by hand and an OCPP 1.6 central

@@ -43,3 +43,9 @@
 [submodule "libs/WWCP_POI"]
 	path = libs/WWCP_POI
 	url = https://github.com/OpenChargingCloud/WWCP_POI.git
+[submodule "libs/ChargingStation"]
+	path = libs/ChargingStation
+	url = https://github.com/OpenChargingCloud/ChargingStation.git
+[submodule "libs/LocalController"]
+	path = libs/LocalController
+	url = https://github.com/OpenChargingCloud/LocalController.git

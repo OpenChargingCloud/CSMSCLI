@@ -3,6 +3,9 @@
     <Project Path="libs/CSMS/CSMS/CSMS.csproj" Id="ab1354df-d6f2-4756-be9a-67666d62dc0f" />
     <Project Path="libs/CSMS/CSMSTests/CSMSTests.csproj" />
   </Folder>
+  <Folder Name="/Dependencies/ChargingStation/">
+    <Project Path="libs/ChargingStation/ChargingStation/ChargingStation.csproj" />
+  </Folder>
   <Folder Name="/Dependencies/ChargyCore/">
     <Project Path="libs/ChargyCore.NET/ChargyCore/ChargyCore.csproj" />
     <Project Path="libs/ChargyCore.NET/ChargyCore.QRCodes/ChargyCore.QRCodes.csproj" />
@@ -32,6 +35,9 @@
     <Project Path="libs/WWCP_ISO15118/WWCP_ISO15118_V2GTP/WWCP_ISO15118_V2GTP.csproj" />
     <Project Path="libs/WWCP_ISO15118/WWCP_ISO15118_V2GTP_Tests/WWCP_ISO15118_V2GTP_Tests.csproj" />
     <Project Path="libs/WWCP_ISO15118/WWCP_ISO15118_XMLDSig/WWCP_ISO15118_XMLDSig.csproj" />
+  </Folder>
+  <Folder Name="/Dependencies/LocalController/">
+    <Project Path="libs/LocalController/LocalController/LocalController.csproj" />
   </Folder>
   <Folder Name="/Dependencies/OCPI/">
     <Project Path="libs/WWCP_OCPI/WWCP_OCPI_Common/WWCP_OCPI_Common.csproj" />
@@ -96,4 +102,5 @@
     <Project Path="libs/Urdr/UrdrTests/UrdrTests.csproj" />
   </Folder>
   <Project Path="CSMSCLI/CSMSCLI.csproj" />
+  <Project Path="InteropTests/InteropTests.csproj" />
 </Solution>

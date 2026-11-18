@@ -197,6 +197,17 @@ jobs:
         timeout-minutes: 30
         run: dotnet test libs/CSMS/CSMSTests/CSMSTests.csproj --configuration Release --no-build --logger "console;verbosity=normal" --logger "trx;LogFileName=${{ matrix.leg }}.trx" --results-directory artifacts
 
+      # The CSMS against the real charging station and the real local
+      # controller, at the commits of libs/ChargingStation and
+      # libs/LocalController pinned here: signing in with a client
+      # certificate or a one-time password bound to its TLS session, the CSMS
+      # dialling both, and reaching a station behind the local controller. The CSMS's
+      # own tests meet only the test nodes of WWCP_OCPP; a change on either
+      # side that the other does not follow shows up here first.
+      - name: Test the CSMS against the station and the local controller
+        timeout-minutes: 15
+        run: dotnet test InteropTests/InteropTests.csproj --configuration Release --no-build --logger "console;verbosity=normal" --logger "trx;LogFileName=interop-${{ matrix.leg }}.trx" --results-directory artifacts
+
       # The question no unit test in this repository asks: does it start?
       # Everything that only happens at startup happens here — the assemblies of
       # every library resolve, Hermod binds its HTTP server, the HTTPExt API
