@@ -41,6 +41,7 @@
     <Compile Include="..\libs\ChargingStation\ChargingStationTests\Connections.GlobalUsings.cs" Link="Connections.GlobalUsings.cs" />
     <Compile Include="..\libs\LocalController\LocalControllerTests\TestControllers.cs" Link="TestControllers.cs" />
     <Compile Include="..\libs\LocalController\LocalControllerTests\TestCA.cs" Link="TestCA.cs" />
+    <Compile Include="..\libs\LocalController\LocalControllerTests\StationPortCertificates.cs" Link="StationPortCertificates.cs" />
   </ItemGroup>
 
 </Project>
