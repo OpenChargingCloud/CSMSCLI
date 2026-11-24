@@ -85,7 +85,7 @@ namespace cloud.charging.open.CSMS.CLI
             => Problem.Whose == CSMSNode.StationServerPort
 
                    ? "Another copy of this CSMS already running is the usual answer. Stop it, or give the " +
-                     "charging station server another port: \"port\" in the \"ocppServer\" section of the configuration file."
+                     "charging station server another port: \"port\" in the \"webSocketServer\" section of the configuration file."
 
                    : null;
 
@@ -114,7 +114,7 @@ namespace cloud.charging.open.CSMS.CLI
             if (CSMS.OCPPServerSSHURL is not String url)
                 return "\nOCPP over SSH is switched on, but the SSH server is off:\nno charging station can connect over SSH";
 
-            var withAKey = CSMS.StationLogins.Logins.Count(login => login.Enabled && login.HasSSHKey);
+            var withAKey = CSMS.WebSocketLogins.Logins.Count(login => login.Enabled && login.HasSSHKey);
 
             return $"\n{url}\nsubsystem {OCPPSshServer.OCPPSubsystem}, {withAKey} with an SSH key";
 
@@ -187,7 +187,7 @@ namespace cloud.charging.open.CSMS.CLI
                                              ("OCPP node",      $"{csms.Node.Id} ({csms.Node.VendorName} {csms.Node.Model})"),
                                              ("stations",       csms.OCPPServerEnabled
                                                                     ? $"{csms.OCPPServerURL}{(csms.OCPPServerTLS ? "" : " (unencrypted)")}, " +
-                                                                      $"{csms.StationLogins.EnabledCount} login(s)" +
+                                                                      $"{csms.WebSocketLogins.EnabledCount} login(s)" +
                                                                       OverSSH(csms)
                                                                     : "switched off - no charging station can connect"),
                                              ("OCPI operator",  $"{csms.PartyIdText} '{csms.BusinessDetails.Name}', " +

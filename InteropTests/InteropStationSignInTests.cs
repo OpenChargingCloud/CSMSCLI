@@ -23,6 +23,7 @@ using System.Text;
 using Newtonsoft.Json.Linq;
 using NUnit.Framework;
 
+using org.GraphDefined.Vanaheimr.Illias;
 using org.GraphDefined.Vanaheimr.Hermod;
 
 using cloud.charging.open.protocols.WWCP.Node.Certificates;
@@ -138,11 +139,11 @@ namespace cloud.charging.open.Interop
             var configuration = new JObject(
                                     new JProperty("nts",  new JObject(new JProperty("groups", new JObject(new JProperty("legal", new JObject(new JProperty("enabled", false))))))),
                                     new JProperty("ocpp", new JObject(new JProperty("nodeId", CSMSName))),
-                                    new JProperty("ocppServer", new JObject(
+                                    new JProperty("webSocketServer", new JObject(
                                         new JProperty("enabled",           true),
                                         new JProperty("address",           "127.0.0.1"),
-                                        new JProperty("port",              TestPorts.Free()),
-                                        new JProperty("securityProfiles",  new JArray(1)),
+                                        new JProperty("port",              TestPorts.Free().ToUInt16()),
+                                        new JProperty("clientAuthentication",  new JArray("httpAuthWithoutTLS")),
                                         new JProperty("subprotocols",      new JArray("ocpp2.1"))
                                     ))
                                 );
@@ -166,10 +167,9 @@ namespace cloud.charging.open.Interop
 
                           var stationConfiguration = TestStations.Offline;
 
-                          stationConfiguration.Add("ocppServer", new JObject(
+                          stationConfiguration.Add("webSocketServer", new JObject(
                                                                      new JProperty("enabled", true),
                                                                      new JProperty("port",    port),
-                                                                     new JProperty("port16",  TestPorts.Free()),
                                                                      new JProperty("http3",   true)
                                                                  ));
 
@@ -269,36 +269,39 @@ namespace cloud.charging.open.Interop
         private String TheStationExpects(String? KeyPins = null, Boolean ByCA = false, Boolean BoundOneTimePass = false)
         {
 
-            String? login = null;
-
+            // What the CSMS signs in with is its WebSocket login's: a one-time
+            // password bound to its TLS session, or the key pin of its client
+            // certificate - or, by its CA, a certificate issued to its name of
+            // a chain the station port accepts.
             if (BoundOneTimePass)
-                Assert.That(station.Connections.TryAddAuthentication("What the CSMS signs in with", "totp", CSMSName, TheSharedSecret,
-                                                                     out login, out var loginError,
-                                                                     TLSChannelBinding: true),
+            {
+
+                Assert.That(station.WebSocketLogins.TrySetTOTPAuthentication(User_Id.Parse(CSMSName), TheSharedSecret, null, null, null, null, null, I18NString.Create("What the CSMS signs in with"),
+                                                                             out var loginError),
                             Is.True, loginError);
 
+                Assert.That(station.WebSocketLogins.TrySetTOTPBinding(User_Id.Parse(CSMSName), true, out loginError), Is.True, loginError);
+
+            }
+
+            if (KeyPins is not null)
+                Assert.That(station.WebSocketLogins.TryAddKeyPin(User_Id.Parse(CSMSName), KeyPins, "its client certificate", null, I18NString.Create("What the CSMS signs in with"), "tests",
+                                                                 out _, out var pinError),
+                            Is.True, pinError);
+
+            // The operator's authority - with its intermediate kept along,
+            // when the CSMS shows its own certificate and nothing above it.
             if (ByCA)
-                Assert.That(station.Certificates.Import(Encoding.ASCII.GetBytes(ca.Certificate.ExportCertificatePem()),
-                                                        CertificateKind.TLSRoot, null, "The operator's authority",
-                                                        Environment.GetEnvironmentVariable("INTEROP_GROUP") == "1" ? [ ServerPins.MarkOf(station.ConnectionsCertificateUsage, "operator") ] : null,
-                                                        out _, out var rootError),
-                            Is.True, rootError);
+                Assert.That(station.ClientTrust.TryAdd((ca.Intermediate is not null && Environment.GetEnvironmentVariable("INTEROP_KEEPINTERMEDIATE") == "1"
+                                                            ? ca.Intermediate.ExportCertificatePem() + "\n"
+                                                            : "") + ca.Certificate.ExportCertificatePem(),
+                                                       "The operator's authority",
+                                                       out _, out _, out var trustError),
+                            Is.True, trustError);
 
-            // The intermediate of the operator's authority, told to the
-            // station: the CSMS shows its own certificate and nothing above it.
-            if (ByCA && ca.Intermediate is not null && Environment.GetEnvironmentVariable("INTEROP_KEEPINTERMEDIATE") == "1")
-                Assert.That(station.Certificates.Import(Encoding.ASCII.GetBytes(ca.Intermediate.ExportCertificatePem()),
-                                                        CertificateKind.TLSIntermediate, null, "The operator's intermediate", null,
-                                                        out _, out var intermediateError),
-                            Is.True, intermediateError);
-
-            Assert.That(station.Connections.TryAddConnection("The CSMS, dialling in", URL, "CSMS", true, login, null,
+            Assert.That(station.Connections.TryAddConnection(I18NString.Create("The CSMS, dialling in"), org.GraphDefined.Vanaheimr.Hermod.HTTP.URL.Parse(URL), "CSMS", true, null, null,
                                                              out var id, out var error,
-                                                             ServerKeyPins:  KeyPins,
-                                                             Pins:           ByCA ? new OCPPConnections.ServerPinsChange(Environment.GetEnvironmentVariable("INTEROP_GROUP") == "1"
-                                                                                                                             ? new ServerPins([], [], RootGroup: "operator")
-                                                                                                                             : new ServerPins([], [ ServerPins.KeyPinOf(ca.Certificate) ])) : null,
-                                                             Inbound:        true),
+                                                             Inbound: true),
                         Is.True, error);
 
             return id!;
@@ -312,12 +315,12 @@ namespace cloud.charging.open.Interop
         private String TheCSMSDials(Byte[]? Identity = null, Boolean BoundOneTimePass = false, String? HTTPVersion = null)
         {
 
-            Assert.That(csms.StationLogins.TrySetPassword(StationName, null, null, null, out _, out var error), Is.True, error);
+            Assert.That(csms.WebSocketLogins.TrySetPasswordAuthentication(User_Id.Parse(StationName), "a-password-nobody-signs-in-with", null, null, out var error), Is.True, error);
 
             String? login = null;
 
             if (BoundOneTimePass)
-                Assert.That(csms.Connections.TryAddAuthentication("What this CSMS signs in with at the station", "totp", CSMSName, TheSharedSecret,
+                Assert.That(csms.Connections.TryAddTOTPAuthentication(User_Id.Parse(CSMSName), TheSharedSecret, I18NString.Create("What this CSMS signs in with at the station"),
                                                                   out login, out error,
                                                                   TLSChannelBinding: true),
                             Is.True, error);
@@ -335,7 +338,7 @@ namespace cloud.charging.open.Interop
 
             }
 
-            Assert.That(csms.Connections.TryAddConnection("The station", URL, "ChargingStation", true, login, null,
+            Assert.That(csms.Connections.TryAddConnection(I18NString.Create("The station"), org.GraphDefined.Vanaheimr.Hermod.HTTP.URL.Parse(URL), "ChargingStation", true, login, null,
                                                           out var id, out error,
                                                           ServerKeyPins:  stationKeyPin,
                                                           HTTPVersion:    HTTPVersion,
@@ -399,7 +402,7 @@ namespace cloud.charging.open.Interop
             var inbound  = TheStationExpects(ByCA: true);
             var dialled  = TheCSMSDials(identity);
 
-            await Until(() => csms.ConnectionStates.TryGetValue(dialled, out var state) && state.Status != Status.Connected && state.Attempt is >= 2,
+            await Until(() => csms.ConnectionStates.TryGetValue(dialled, out var state) && state.Status != Status.Connected && state.Said.Contains("403"),
                         "The CSMS saying what went wrong");
 
             TestContext.Out.WriteLine(Log);
@@ -412,7 +415,7 @@ namespace cloud.charging.open.Interop
         public async Task WithAOneTimePasswordBoundToItsTLSSession_OverHTTP3()
         {
 
-            await Until(() => station.OCPPServerJSON().SelectTokens("$..http3Port").Any(token => token.Type == JTokenType.Integer && token.Value<Int32>() == port),
+            await Until(() => station.OCPPServerConfigurationJSON().SelectTokens("$..http3Port").Any(token => token.Type == JTokenType.Integer && token.Value<Int32>() == port),
                         "The station taking WebSockets over HTTP/3", 15);
 
             var inbound = TheStationExpects(BoundOneTimePass: true);
@@ -420,7 +423,7 @@ namespace cloud.charging.open.Interop
 
             await BothAreConnected_AndTheStationAnswers(dialled, inbound);
 
-            Assert.That(String.Join("\n", otherSaid), Does.Contain("bound to its TLS session"), Log);
+            Assert.That(String.Join("\n", otherSaid), Does.Contain("a one-time token bound to its connection"), Log);
 
         }
 

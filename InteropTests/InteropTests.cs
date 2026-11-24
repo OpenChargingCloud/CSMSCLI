@@ -22,6 +22,7 @@ using System.Text;
 using Newtonsoft.Json.Linq;
 using NUnit.Framework;
 
+using org.GraphDefined.Vanaheimr.Illias;
 using org.GraphDefined.Vanaheimr.Hermod;
 
 using cloud.charging.open.protocols.WWCP;
@@ -70,11 +71,11 @@ namespace cloud.charging.open.Interop
             var configuration = new JObject(
                                     new JProperty("nts",  new JObject(new JProperty("groups", new JObject(new JProperty("legal", new JObject(new JProperty("enabled", false))))))),
                                     new JProperty("ocpp", new JObject(new JProperty("nodeId", Environment.GetEnvironmentVariable("INTEROP_CSMS_ID") ?? CSMSName))),
-                                    new JProperty("ocppServer", new JObject(
+                                    new JProperty("webSocketServer", new JObject(
                                         new JProperty("enabled",           true),
                                         new JProperty("address",           "127.0.0.1"),
-                                        new JProperty("port",              TestPorts.Free()),
-                                        new JProperty("securityProfiles",  new JArray(1)),
+                                        new JProperty("port",              TestPorts.Free().ToUInt16()),
+                                        new JProperty("clientAuthentication",  new JArray("httpAuthWithoutTLS")),
                                         new JProperty("subprotocols",      new JArray("ocpp2.1"))
                                     ))
                                 );
@@ -119,15 +120,15 @@ namespace cloud.charging.open.Interop
         private String TheCSMSDials(String Node, String URL, String Type, String Password = ThePassword)
         {
 
-            Assert.That(csms!.StationLogins.TrySetPassword(Node, null, null, null, out _, out var error), Is.True, error);
+            Assert.That(csms!.WebSocketLogins.TrySetPasswordAuthentication(User_Id.Parse(Node), "a-password-nobody-signs-in-with", null, null, out var error), Is.True, error);
 
             if (Type == "LocalController")
-                Assert.That(csms.StationLogins.TrySetLocalController(Node, true, out error), Is.True, error);
+                Assert.That(csms.WebSocketLogins.TrySetLocalController(User_Id.Parse(Node), true, out error), Is.True, error);
 
-            Assert.That(csms.Connections.TryAddAuthentication($"What this CSMS signs in with at '{Node}'", "basic", CSMSName, Password, out var login, out error),
+            Assert.That(csms.Connections.TryAddBasicAuthentication(User_Id.Parse(CSMSName), Password, I18NString.Create($"What this CSMS signs in with at '{Node}'"), out var login, out error, out _),
                         Is.True, error);
 
-            Assert.That(csms.Connections.TryAddConnection($"The node '{Node}'", URL, Type, true, login, null,
+            Assert.That(csms.Connections.TryAddConnection(I18NString.Create($"The node '{Node}'"), org.GraphDefined.Vanaheimr.Hermod.HTTP.URL.Parse(URL), Type, true, login, null,
                                                           out var id, out error,
                                                           RemoteNodeId: Node),
                         Is.True, error);
@@ -142,10 +143,10 @@ namespace cloud.charging.open.Interop
         private async Task<(TheStation Station, String URL, String Inbound)> AStationThatIsDialled(String Password = ThePassword)
         {
 
-            var port           = IPPort.Parse(TestPorts.Free());
+            var port           = TestPorts.Free();
             var configuration  = TestStations.Offline;
 
-            configuration.Add("ocppServer", new JObject(
+            configuration.Add("webSocketServer", new JObject(
                                                 new JProperty("enabled", true),
                                                 new JProperty("port",    port.ToUInt16())
                                             ));
@@ -155,15 +156,15 @@ namespace cloud.charging.open.Interop
 
             station.Log.OnLogged += entry => otherSaid.Enqueue(entry.Message);
 
-            station = await TestStations.Started(station, stationDirectory);
+            station = await TestStations.Booted(station, stationDirectory);
             toDispose.Add(station);
 
             var url = $"ws://127.0.0.1:{port}/{CSMSName}";
 
-            Assert.That(station.Connections.TryAddAuthentication("What the CSMS signs in with", "basic", CSMSName, Password, out var login, out var error),
+            Assert.That(station.WebSocketLogins.TrySetPasswordAuthentication(User_Id.Parse(CSMSName), Password, null, I18NString.Create("What the CSMS signs in with"), out var error),
                         Is.True, error);
 
-            Assert.That(station.Connections.TryAddConnection("The CSMS, dialling in", url, "CSMS", true, login, null,
+            Assert.That(station.Connections.TryAddConnection(I18NString.Create("The CSMS, dialling in"), org.GraphDefined.Vanaheimr.Hermod.HTTP.URL.Parse(url), "CSMS", true, null, null,
                                                              out var id, out error,
                                                              Inbound: true),
                         Is.True, error);
@@ -238,13 +239,13 @@ namespace cloud.charging.open.Interop
             // The station is told to let nothing in under that name any more.
             var entry = station.Connections.Connections.Single(one => one.Id == inbound);
 
-            Assert.That(station.Connections.TryUpdateConnection(inbound, entry.Description, entry.URL.ToString(), "CSMS", false, entry.AuthenticationId, null, out var error),
+            Assert.That(station.Connections.TryUpdateConnection(inbound, entry.Description, entry.URL, "CSMS", false, entry.AuthenticationId, null, out var error),
                         Is.True, error);
 
             await Until(() => !csms!.IsConnected("cs001"), "The CSMS noticing that the station let go");
 
             // And then to let it in again: the CSMS comes back by itself.
-            Assert.That(station.Connections.TryUpdateConnection(inbound, entry.Description, entry.URL.ToString(), "CSMS", true, entry.AuthenticationId, null, out error),
+            Assert.That(station.Connections.TryUpdateConnection(inbound, entry.Description, entry.URL, "CSMS", true, entry.AuthenticationId, null, out error),
                         Is.True, error);
 
             await Until(() => csms!.IsConnected("cs001"), "The CSMS coming back by itself", Seconds: 60);
@@ -263,11 +264,11 @@ namespace cloud.charging.open.Interop
             var configuration = TestControllers.Offline;
 
             configuration["ocpp"]       = new JObject(new JProperty("nodeId", Id));
-            configuration["ocppServer"] = new JObject(
+            configuration["webSocketServer"] = new JObject(
                                               new JProperty("enabled",           true),
                                               new JProperty("address",           "127.0.0.1"),
-                                              new JProperty("port",              TestPorts.Free()),
-                                              new JProperty("securityProfiles",  new JArray(1)),
+                                              new JProperty("port",              TestPorts.Free().ToUInt16()),
+                                              new JProperty("clientAuthentication",  new JArray("httpAuthWithoutTLS")),
                                               new JProperty("subprotocols",      new JArray("ocpp2.1"))
                                           );
             configuration["csms"]       = new JObject(new JProperty("enabled", true));
@@ -280,10 +281,10 @@ namespace cloud.charging.open.Interop
 
             var url = $"ws://127.0.0.1:{controller.OCPPServerSettings.TCPPort}/{CSMSName}";
 
-            Assert.That(controller.Connections.TryAddAuthentication("What the CSMS signs in with", "basic", CSMSName, ThePassword, out var login, out var error),
+            Assert.That(controller.WebSocketLogins.TrySetPasswordAuthentication(User_Id.Parse(CSMSName), ThePassword, null, I18NString.Create("What the CSMS signs in with"), out var error),
                         Is.True, error);
 
-            Assert.That(controller.Connections.TryAddConnection("The CSMS, dialling in", url, "CSMS", true, login, null,
+            Assert.That(controller.Connections.TryAddConnection(I18NString.Create("The CSMS, dialling in"), org.GraphDefined.Vanaheimr.Hermod.HTTP.URL.Parse(url), "CSMS", true, null, null,
                                                                 out var id, out error,
                                                                 Inbound: true),
                         Is.True, error);
@@ -312,7 +313,7 @@ namespace cloud.charging.open.Interop
             // hand: it dials the controller, and says that it started.
             const String stationPassword = "a-password-long-enough-for-ocpp";
 
-            Assert.That(controller.StationLogins.TrySetPassword("cs050", stationPassword, null, null, out _, out var error), Is.True, error);
+            Assert.That(controller.WebSocketLogins.TrySetPasswordAuthentication(User_Id.Parse("cs050"), stationPassword, null, null, out var error), Is.True, error);
 
             using var station  = new ClientWebSocket();
             var       got      = new ConcurrentQueue<JArray>();

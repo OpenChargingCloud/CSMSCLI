@@ -113,7 +113,7 @@ With certbot's files and no proxy:
 Neither said, the CSMS warns in its log, below its banner and above every page
 of its web interface to its administrators. What is said on the command line
 wins over the file; WWCP_Node's README says the rest. The stations' OCPP port is
-another listener, whose TLS the `ocppServer` section's security profiles and
+another listener, whose TLS the `clientAuthentication` of the `webSocketServer` section and
 the certificate store decide.
 
 Everything that happens is written three times over, because the three answer
@@ -372,7 +372,7 @@ switched off or without a role, the key it came with taken out or switched off:
 ### Charging stations over SSH
 
 The charging stations may speak OCPP over the same SSH server, as the subsystem
-`ocpp@open.charging.cloud`, where `"ocppServer": { "ssh": { "enabled": true } }`
+`ocpp@open.charging.cloud`, where `"webSocketServer": { "ssh": { "enabled": true } }`
 in `configuration.json` or the switch on the **Charging stations** page says so.
 It is off unless somebody switches it on, and only served while the charging
 station server runs. The banner then has two more lines under `stations`, with

@@ -23,6 +23,7 @@ using System.Text;
 using Newtonsoft.Json.Linq;
 using NUnit.Framework;
 
+using org.GraphDefined.Vanaheimr.Illias;
 using org.GraphDefined.Vanaheimr.Hermod;
 
 using cloud.charging.open.protocols.WWCP;
@@ -123,11 +124,11 @@ namespace cloud.charging.open.Interop
             var configuration = new JObject(
                                     new JProperty("nts",  noLegalTime),
                                     new JProperty("ocpp", new JObject(new JProperty("nodeId", CSMSName))),
-                                    new JProperty("ocppServer", new JObject(
+                                    new JProperty("webSocketServer", new JObject(
                                         new JProperty("enabled",           true),
                                         new JProperty("address",           "127.0.0.1"),
-                                        new JProperty("port",              TestPorts.Free()),
-                                        new JProperty("securityProfiles",  new JArray(1)),
+                                        new JProperty("port",              TestPorts.Free().ToUInt16()),
+                                        new JProperty("clientAuthentication",  new JArray("httpAuthWithoutTLS")),
                                         new JProperty("subprotocols",      new JArray("ocpp2.1"))
                                     ))
                                 );
@@ -162,11 +163,11 @@ namespace cloud.charging.open.Interop
                                             new JObject(
                                                 new JProperty("nts",        noLegalTime),
                                                 new JProperty("ocpp",       new JObject(new JProperty("nodeId", ControllerName))),
-                                                new JProperty("ocppServer", new JObject(
+                                                new JProperty("webSocketServer", new JObject(
                                                     new JProperty("enabled",           true),
                                                     new JProperty("address",           "127.0.0.1"),
                                                     new JProperty("port",              port),
-                                                    new JProperty("securityProfiles",  new JArray(2, 3)),
+                                                    new JProperty("clientAuthentication",  new JArray("httpAuthOverTLS", "tlsClientCertificate")),
                                                     new JProperty("http3",             true),
                                                     new JProperty("reachableAs",       new JArray("127.0.0.1")),
                                                     new JProperty("subprotocols",      new JArray("ocpp2.1"))
@@ -263,26 +264,34 @@ namespace cloud.charging.open.Interop
         private String TheControllerExpects(String? KeyPins = null, Boolean ByCA = false, Boolean BoundOneTimePass = false)
         {
 
-            String? login = null;
-
+            // What the CSMS signs in with is its WebSocket login's: a one-time
+            // password bound to its TLS session, or the key pin of its client
+            // certificate - or, by its CA, a certificate issued to its name of
+            // a chain the station port accepts.
             if (BoundOneTimePass)
-                Assert.That(controller.Connections.TryAddAuthentication("What the CSMS signs in with", "totp", CSMSName, TheSharedSecret,
-                                                                        out login, out var loginError,
-                                                                        TLSChannelBinding: true),
+            {
+
+                Assert.That(controller.WebSocketLogins.TrySetTOTPAuthentication(User_Id.Parse(CSMSName), TheSharedSecret, null, null, null, null, null, I18NString.Create("What the CSMS signs in with"),
+                                                                                out var loginError),
                             Is.True, loginError);
 
-            if (ByCA)
-                Assert.That(controller.Certificates.Import(Encoding.ASCII.GetBytes(clientCA.Certificate.ExportCertificatePem()),
-                                                           CertificateKind.TLSRoot, null, "The operator's authority",
-                                                           [ ServerPins.MarkOf(controller.ConnectionsCertificateUsage, RootGroup) ],
-                                                           out _, out var rootError),
-                            Is.True, rootError);
+                Assert.That(controller.WebSocketLogins.TrySetTOTPBinding(User_Id.Parse(CSMSName), true, out loginError), Is.True, loginError);
 
-            Assert.That(controller.Connections.TryAddConnection("The CSMS, dialling in", URL, "CSMS", true, login, null,
+            }
+
+            if (KeyPins is not null)
+                Assert.That(controller.WebSocketLogins.TryAddKeyPin(User_Id.Parse(CSMSName), KeyPins, "its client certificate", null, I18NString.Create("What the CSMS signs in with"), "tests",
+                                                                    out _, out var pinError),
+                            Is.True, pinError);
+
+            if (ByCA)
+                Assert.That(controller.ClientTrust.TryAdd(clientCA.Certificate.ExportCertificatePem(), "The operator's authority",
+                                                          out _, out _, out var trustError),
+                            Is.True, trustError);
+
+            Assert.That(controller.Connections.TryAddConnection(I18NString.Create("The CSMS, dialling in"), org.GraphDefined.Vanaheimr.Hermod.HTTP.URL.Parse(URL), "CSMS", true, null, null,
                                                                 out var id, out var error,
-                                                                ServerKeyPins:  KeyPins,
-                                                                Pins:           ByCA ? new OCPPConnections.ServerPinsChange(new ServerPins([], [], RootGroup: RootGroup)) : null,
-                                                                Inbound:        true),
+                                                                Inbound: true),
                         Is.True, error);
 
             return id!;
@@ -295,13 +304,13 @@ namespace cloud.charging.open.Interop
         private String TheCSMSDials(Byte[]? Identity = null, Boolean BoundOneTimePass = false, String? HTTPVersion = null)
         {
 
-            Assert.That(csms.StationLogins.TrySetPassword(ControllerName, null, null, null, out _, out var error), Is.True, error);
-            Assert.That(csms.StationLogins.TrySetLocalController(ControllerName, true, out error),                 Is.True, error);
+            Assert.That(csms.WebSocketLogins.TrySetPasswordAuthentication(User_Id.Parse(ControllerName), "a-password-nobody-signs-in-with", null, null, out var error), Is.True, error);
+            Assert.That(csms.WebSocketLogins.TrySetLocalController(User_Id.Parse(ControllerName), true, out error),                 Is.True, error);
 
             String? login = null;
 
             if (BoundOneTimePass)
-                Assert.That(csms.Connections.TryAddAuthentication("What this CSMS signs in with at the controller", "totp", CSMSName, TheSharedSecret,
+                Assert.That(csms.Connections.TryAddTOTPAuthentication(User_Id.Parse(CSMSName), TheSharedSecret, I18NString.Create("What this CSMS signs in with at the controller"),
                                                                   out login, out error,
                                                                   TLSChannelBinding: true),
                             Is.True, error);
@@ -319,7 +328,7 @@ namespace cloud.charging.open.Interop
 
             }
 
-            Assert.That(csms.Connections.TryAddConnection("The controller", URL, "LocalController", true, login, null,
+            Assert.That(csms.Connections.TryAddConnection(I18NString.Create("The controller"), org.GraphDefined.Vanaheimr.Hermod.HTTP.URL.Parse(URL), "LocalController", true, login, null,
                                                           out var id, out error,
                                                           HTTPVersion:   HTTPVersion,
                                                           Identities:    identities,
@@ -391,7 +400,7 @@ namespace cloud.charging.open.Interop
             var inbound  = TheControllerExpects(ByCA: true);
             var dialled  = TheCSMSDials(identity);
 
-            await Until(() => csms.ConnectionStates.TryGetValue(dialled, out var state) && state.Status != Status.Connected && state.Attempt is >= 2,
+            await Until(() => csms.ConnectionStates.TryGetValue(dialled, out var state) && state.Status != Status.Connected && state.Said.Contains("403"),
                         "The CSMS saying what went wrong");
 
             TestContext.Out.WriteLine(Log);
@@ -416,7 +425,7 @@ namespace cloud.charging.open.Interop
 
             await BothAreConnected_AndTheControllerAnswers(dialled, inbound);
 
-            Assert.That(String.Join("\n", otherSaid), Does.Contain("a one-time password bound to its TLS session"), Log);
+            Assert.That(String.Join("\n", otherSaid), Does.Contain("a one-time token bound to its connection"), Log);
 
         }
 
