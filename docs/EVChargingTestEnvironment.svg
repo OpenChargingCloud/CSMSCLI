@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="440" viewBox="0 0 920 440">
+  <title>EV charging test environment: EV, CS, LC, GW, CSMS, RN, EMSP, EM, GO, SP, DNS, NTS, Log, Download, PKI</title>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#6e7781"/>
+    </marker>
+  </defs>
+  <rect x="1" y="1" width="918" height="438" rx="12" fill="#ffffff" stroke="#d0d7de" stroke-width="2"/>
+  <rect x="454" y="14" width="452" height="92" rx="12" fill="none" stroke="#d0d7de" stroke-width="2" stroke-dasharray="6 5"/>
+  <path d="M 102 180 L 168 180" fill="none" stroke="#6e7781" stroke-width="2" marker-end="url(#arrow)"/>
+  <path d="M 232 180 L 298 180" fill="none" stroke="#6e7781" stroke-width="2" marker-end="url(#arrow)"/>
+  <path d="M 362 180 L 428 180" fill="none" stroke="#6e7781" stroke-width="2" marker-end="url(#arrow)"/>
+  <path d="M 492 180 L 558 180" fill="none" stroke="#6e7781" stroke-width="2" marker-end="url(#arrow)"/>
+  <path d="M 622 180 L 688 180" fill="none" stroke="#6e7781" stroke-width="2" marker-end="url(#arrow)"/>
+  <path d="M 752 180 L 818 180" fill="none" stroke="#6e7781" stroke-width="2" marker-end="url(#arrow)"/>
+  <path d="M 200 148 L 200 60 L 233 60" fill="none" stroke="#6e7781" stroke-width="2" marker-end="url(#arrow)"/>
+  <path d="M 330 148 L 330 60 L 297 60" fill="none" stroke="#6e7781" stroke-width="2" marker-end="url(#arrow)"/>
+  <path d="M 330 212 L 330 258" fill="none" stroke="#6e7781" stroke-width="2" marker-end="url(#arrow)"/>
+  <path d="M 200 212 L 200 358" fill="none" stroke="#6e7781" stroke-width="2" marker-end="url(#arrow)"/>
+  <path d="M 70 212 L 70 390 L 168 390" fill="none" stroke="#6e7781" stroke-width="2" marker-end="url(#arrow)"/>
+  <path d="M 850 212 L 850 390 L 232 390" fill="none" stroke="#6e7781" stroke-width="2" marker-end="url(#arrow)"/>
+  <circle cx="70" cy="180" r="32" fill="#ffffff" stroke="#6e7781" stroke-width="2"/>
+  <text x="70" y="180" text-anchor="middle" dominant-baseline="central" font-family="'Segoe UI', Helvetica, Arial, sans-serif" font-size="16" font-weight="bold" fill="#24292f">EV</text>
+  <circle cx="200" cy="180" r="32" fill="#ffffff" stroke="#6e7781" stroke-width="2"/>
+  <text x="200" y="180" text-anchor="middle" dominant-baseline="central" font-family="'Segoe UI', Helvetica, Arial, sans-serif" font-size="16" font-weight="bold" fill="#24292f">CS</text>
+  <circle cx="330" cy="180" r="32" fill="#ffffff" stroke="#6e7781" stroke-width="2"/>
+  <text x="330" y="180" text-anchor="middle" dominant-baseline="central" font-family="'Segoe UI', Helvetica, Arial, sans-serif" font-size="16" font-weight="bold" fill="#24292f">LC</text>
+  <circle cx="460" cy="180" r="32" fill="#ffffff" stroke="#6e7781" stroke-width="2"/>
+  <text x="460" y="180" text-anchor="middle" dominant-baseline="central" font-family="'Segoe UI', Helvetica, Arial, sans-serif" font-size="16" font-weight="bold" fill="#24292f">GW</text>
+  <circle cx="590" cy="180" r="32" fill="#f8c4c4" stroke="#d9534f" stroke-width="3"/>
+  <text x="590" y="180" text-anchor="middle" dominant-baseline="central" font-family="'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" font-weight="bold" fill="#24292f">CSMS</text>
+  <circle cx="720" cy="180" r="32" fill="#ffffff" stroke="#6e7781" stroke-width="2"/>
+  <text x="720" y="180" text-anchor="middle" dominant-baseline="central" font-family="'Segoe UI', Helvetica, Arial, sans-serif" font-size="16" font-weight="bold" fill="#24292f">RN</text>
+  <circle cx="850" cy="180" r="32" fill="#ffffff" stroke="#6e7781" stroke-width="2"/>
+  <text x="850" y="180" text-anchor="middle" dominant-baseline="central" font-family="'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" font-weight="bold" fill="#24292f">EMSP</text>
+  <circle cx="265" cy="60" r="32" fill="#ffffff" stroke="#6e7781" stroke-width="2"/>
+  <text x="265" y="60" text-anchor="middle" dominant-baseline="central" font-family="'Segoe UI', Helvetica, Arial, sans-serif" font-size="16" font-weight="bold" fill="#24292f">EM</text>
+  <circle cx="330" cy="290" r="32" fill="#ffffff" stroke="#6e7781" stroke-width="2"/>
+  <text x="330" y="290" text-anchor="middle" dominant-baseline="central" font-family="'Segoe UI', Helvetica, Arial, sans-serif" font-size="16" font-weight="bold" fill="#24292f">GO</text>
+  <circle cx="200" cy="390" r="32" fill="#ffffff" stroke="#6e7781" stroke-width="2"/>
+  <text x="200" y="390" text-anchor="middle" dominant-baseline="central" font-family="'Segoe UI', Helvetica, Arial, sans-serif" font-size="16" font-weight="bold" fill="#24292f">SP</text>
+  <circle cx="500" cy="60" r="32" fill="#ffffff" stroke="#6e7781" stroke-width="2"/>
+  <text x="500" y="60" text-anchor="middle" dominant-baseline="central" font-family="'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" font-weight="bold" fill="#24292f">DNS</text>
+  <circle cx="590" cy="60" r="32" fill="#ffffff" stroke="#6e7781" stroke-width="2"/>
+  <text x="590" y="60" text-anchor="middle" dominant-baseline="central" font-family="'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" font-weight="bold" fill="#24292f">NTS</text>
+  <circle cx="680" cy="60" r="32" fill="#ffffff" stroke="#6e7781" stroke-width="2"/>
+  <text x="680" y="60" text-anchor="middle" dominant-baseline="central" font-family="'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" font-weight="bold" fill="#24292f">Log</text>
+  <circle cx="770" cy="60" r="32" fill="#ffffff" stroke="#6e7781" stroke-width="2"/>
+  <text x="770" y="60" text-anchor="middle" dominant-baseline="central" font-family="'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="bold" fill="#24292f">Download</text>
+  <circle cx="860" cy="60" r="32" fill="#ffffff" stroke="#6e7781" stroke-width="2"/>
+  <text x="860" y="60" text-anchor="middle" dominant-baseline="central" font-family="'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" font-weight="bold" fill="#24292f">PKI</text>
+</svg>

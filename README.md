@@ -1,5 +1,7 @@
 # CSMS - Charging Station Management System
 
+![The EV charging test environment, the CSMS (CSMS) highlighted](docs/EVChargingTestEnvironment.svg)
+
 [![CI](https://github.com/OpenChargingCloud/CSMSCLI/actions/workflows/ci.yml/badge.svg)](https://github.com/OpenChargingCloud/CSMSCLI/actions/workflows/ci.yml)
 [![Nightly](https://github.com/OpenChargingCloud/CSMSCLI/actions/workflows/nightly.yml/badge.svg)](https://github.com/OpenChargingCloud/CSMSCLI/actions/workflows/nightly.yml)
 
